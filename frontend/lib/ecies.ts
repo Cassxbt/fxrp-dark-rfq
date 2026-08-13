@@ -16,7 +16,7 @@
  */
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 
-function padTo32(bytes: Uint8Array): Uint8Array {
+export function padTo32(bytes: Uint8Array): Uint8Array {
   if (bytes.length === 32) return bytes;
   if (bytes.length > 32) throw new Error(`unexpected length > 32: ${bytes.length}`);
   const out = new Uint8Array(32);

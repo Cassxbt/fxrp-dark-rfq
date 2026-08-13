@@ -8,6 +8,7 @@ import { EIP712_DOMAIN, RFQ_INTENT_TYPES, SIDE_TAKER_BUY, SIDE_TAKER_SELL } from
 import { RFQ_SETTLEMENT_ADDRESS, FXRP_ADDRESS, USDT0_ADDRESS, ERC20_ABI, RFQ_SETTLEMENT_ABI } from "@/lib/contracts";
 import { sendRfqDirect } from "@/lib/rfqClient";
 import { hexToBytes } from "@/lib/ecies";
+import { quoteAmount } from "@/lib/quoteAmount";
 
 // Explorer-verified, not read live — see BUILD-SPEC.md §2.1. The contract
 // itself reads decimals() live on-chain; this only sizes the approve() call.
@@ -58,14 +59,13 @@ export default function TakerPage() {
     // size of FXRP.
     try {
       if (sideNum === SIDE_TAKER_BUY) {
-        const quoteAmount =
-          (sizeUnits * limitPriceWad * 10n ** BigInt(USDT0_DECIMALS)) / (10n ** BigInt(FXRP_DECIMALS) * 10n ** 18n);
+        const approveAmount = quoteAmount(sizeUnits, limitPriceWad, FXRP_DECIMALS, USDT0_DECIMALS);
         setStatus("Approving USDT0...");
         await writeContractAsync({
           address: USDT0_ADDRESS,
           abi: ERC20_ABI,
           functionName: "approve",
-          args: [RFQ_SETTLEMENT_ADDRESS, quoteAmount],
+          args: [RFQ_SETTLEMENT_ADDRESS, approveAmount],
         });
       } else {
         setStatus("Approving FXRP...");

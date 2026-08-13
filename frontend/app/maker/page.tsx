@@ -7,6 +7,7 @@ import { ConnectWallet } from "@/components/ConnectWallet";
 import { EIP712_DOMAIN, QUOTE_TYPES } from "@/lib/eip712";
 import { RFQ_SETTLEMENT_ADDRESS, FXRP_ADDRESS, USDT0_ADDRESS, ERC20_ABI } from "@/lib/contracts";
 import { sendRfqDirect } from "@/lib/rfqClient";
+import { quoteAmount } from "@/lib/quoteAmount";
 
 const FXRP_DECIMALS = 6;
 const USDT0_DECIMALS = 6;
@@ -52,14 +53,13 @@ export default function MakerPage() {
         });
       } else {
         // Taker is selling FXRP, so the maker pays USDT0.
-        const quoteAmount =
-          (sizeUnits * priceWad * 10n ** BigInt(USDT0_DECIMALS)) / (10n ** BigInt(FXRP_DECIMALS) * 10n ** 18n);
+        const approveAmount = quoteAmount(sizeUnits, priceWad, FXRP_DECIMALS, USDT0_DECIMALS);
         setStatus("Approving USDT0...");
         await writeContractAsync({
           address: USDT0_ADDRESS,
           abi: ERC20_ABI,
           functionName: "approve",
-          args: [RFQ_SETTLEMENT_ADDRESS, quoteAmount],
+          args: [RFQ_SETTLEMENT_ADDRESS, approveAmount],
         });
       }
 

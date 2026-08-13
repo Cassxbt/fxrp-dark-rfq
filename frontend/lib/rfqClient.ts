@@ -1,4 +1,4 @@
-import { eciesEncrypt, bytesToHex, hexToBytes } from "./ecies";
+import { eciesEncrypt, bytesToHex, hexToBytes, padTo32 } from "./ecies";
 import { EXT_PROXY_URL } from "./contracts";
 
 function opHash(s: string): `0x${string}` {
@@ -7,6 +7,41 @@ function opHash(s: string): `0x${string}` {
   const padded = new Uint8Array(32);
   padded.set(bytes);
   return bytesToHex(padded) as `0x${string}`;
+}
+
+/**
+ * Go's encoding/json decodes a plain `[]byte` field as base64 by default,
+ * not hex — the extension's signedEnvelope[T]{ Signature []byte } (rfq.go)
+ * uses exactly that. wagmi's signTypedData returns a hex string; sending it
+ * through unconverted would make Go's json.Unmarshal base64-decode "0x1a2b..."
+ * into 99 garbage bytes instead of the real 65-byte signature, and
+ * recoverSigner's explicit len(sig) != 65 check would reject every OPEN and
+ * QUOTE (code-review finding — this broke the entire happy path, and the
+ * project's own Go-to-Go integration test never exposed it because both
+ * sides there used Go's default []byte marshaling consistently).
+ */
+function hexSignatureToBase64(hexSig: `0x${string}`): string {
+  const bytes = hexToBytes(hexSig);
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
+}
+
+/**
+ * JSON.stringify with bigint fields emitted as raw, unquoted number literals
+ * instead of strings. Go's math/big.Int.UnmarshalJSON requires a bare JSON
+ * number ("size":1000000) and rejects a quoted string ("size":"1000000")
+ * outright — found live via verify-signature-encoding.mts, not by
+ * inspection: "math/big: cannot unmarshal \"1000000\" into a *big.Int".
+ * Values like WAD prices (1e18 scale) exceed Number.MAX_SAFE_INTEGER, so a
+ * plain `Number(x)` round-trip would lose precision — this uses a sentinel
+ * string during JSON.stringify, then strips the surrounding quotes with a
+ * regex pass afterward, preserving full precision.
+ */
+function stringifyWithRawBigInts(value: unknown): string {
+  const marker = "__BIGINT__";
+  const json = JSON.stringify(value, (_key, v) => (typeof v === "bigint" ? `${marker}${v.toString()}${marker}` : v));
+  return json.replace(new RegExp(`"${marker}(\\d+)${marker}"`, "g"), "$1");
 }
 
 let cachedPubKey: Uint8Array | null = null;
@@ -20,8 +55,12 @@ export async function fetchTeePubKey(): Promise<Uint8Array> {
   const { x, y } = info.machineData.publicKey as { x: string; y: string };
   const pubKey = new Uint8Array(65);
   pubKey[0] = 0x04;
-  pubKey.set(hexToBytes(x), 1);
-  pubKey.set(hexToBytes(y), 33);
+  // Zero-pad each coordinate to 32 bytes — the hex from /info is not
+  // guaranteed fixed-width (a coordinate with a leading zero byte serializes
+  // shorter), and writing it unpadded would misalign the byte layout
+  // (code-review finding, ~1/256 chance per coordinate but real).
+  pubKey.set(padTo32(hexToBytes(x)), 1);
+  pubKey.set(padTo32(hexToBytes(y)), 33);
   cachedPubKey = pubKey;
   return pubKey;
 }
@@ -53,10 +92,8 @@ export async function sendRfqDirect(
     // reads df.OriginalMessage directly as 32 raw bytes.
     plaintext = payload;
   } else {
-    const json = JSON.stringify(payload, (_key, value) =>
-      typeof value === "bigint" ? value.toString() : value,
-    );
-    plaintext = new TextEncoder().encode(json);
+    const encodedPayload = { data: payload.data, signature: hexSignatureToBase64(payload.signature) };
+    plaintext = new TextEncoder().encode(stringifyWithRawBigInts(encodedPayload));
   }
 
   const message =
