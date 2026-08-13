@@ -29,13 +29,18 @@ type Extension struct {
 	signPort int
 
 	// privateKey is the secp256k1 private key delivered via UPDATE_KEY. May be nil
-	// before the first successful UPDATE_KEY instruction.
+	// before the first successful UPDATE_KEY instruction. Doubles as the RFQ
+	// attested signer key — see BUILD-SPEC.md §2.1's "three keys" note.
 	privateKey *secp256k1.PrivateKey
+
+	// book holds in-memory RFQ/quote state. Not persisted — a restart wipes it,
+	// disclosed in BUILD-SPEC.md §2.2.
+	book *rfqBook
 }
 
 // --- DO NOT MODIFY: New(), actionHandler() are boilerplate.
 func New(extensionPort, signPort int) *Extension {
-	e := &Extension{signPort: signPort}
+	e := &Extension{signPort: signPort, book: newRfqBook()}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /state", e.stateHandler)
@@ -73,6 +78,9 @@ func (e *Extension) processAction(action teetypes.Action) (int, []byte) {
 	case dataFixed.OPType == teeutils.ToHash(config.OPTypeKey):
 		return e.processKey(action, dataFixed)
 
+	case dataFixed.OPType == teeutils.ToHash(config.OPTypeRfq):
+		return e.processRfq(action, dataFixed)
+
 	default:
 		return http.StatusNotImplemented, []byte(fmt.Sprintf(
 			"unsupported op type: received %s, expected %s (%s)",
@@ -102,6 +110,28 @@ func (e *Extension) processKey(action teetypes.Action, df *instruction.DataFixed
 			teeutils.ToHash(config.OPCommandSign).Hex(), config.OPCommandSign,
 		))
 	}
+}
+
+// processRfq routes RFQ instructions by OPCommand (OPEN, QUOTE, or CLOSE).
+// Dispatched via the proxy's /direct endpoint, not InstructionSender — see
+// BUILD-SPEC.md §2.2's architecture-correction changelog entry.
+func (e *Extension) processRfq(action teetypes.Action, df *instruction.DataFixed) (int, []byte) {
+	var ar teetypes.ActionResult
+	switch {
+	case df.OPCommand == teeutils.ToHash(config.OPCommandRfqOpen):
+		ar = e.processRfqOpen(action, df)
+	case df.OPCommand == teeutils.ToHash(config.OPCommandRfqQuote):
+		ar = e.processRfqQuote(action, df)
+	case df.OPCommand == teeutils.ToHash(config.OPCommandRfqClose):
+		ar = e.processRfqClose(action, df)
+	default:
+		return http.StatusNotImplemented, []byte(fmt.Sprintf(
+			"unsupported RFQ op command: received %s, expected one of [%s, %s, %s]",
+			df.OPCommand.Hex(), config.OPCommandRfqOpen, config.OPCommandRfqQuote, config.OPCommandRfqClose,
+		))
+	}
+	b, _ := json.Marshal(ar)
+	return http.StatusOK, b
 }
 
 // processKeyUpdate decrypts the original message via the TEE node and stores

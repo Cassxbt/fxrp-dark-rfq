@@ -15,6 +15,14 @@ const (
 	OPCommandUpdate = "UPDATE"
 	OPCommandSign   = "SIGN"
 
+	// RFQ op type — dispatched via the proxy's /direct endpoint (off-chain, no
+	// on-chain transaction), not InstructionSender. No F_ prefix, so op.IsSystem()
+	// is false and /direct's validateDirect allows it — see BUILD-SPEC.md §2.2.
+	OPTypeRfq         = "RFQ"
+	OPCommandRfqOpen  = "OPEN"
+	OPCommandRfqQuote = "QUOTE"
+	OPCommandRfqClose = "CLOSE"
+
 	TimeoutShutdown = 5 * time.Second
 )
 

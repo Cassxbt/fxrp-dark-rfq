@@ -133,6 +133,21 @@ func signECDSA(key *secp256k1.PrivateKey, message []byte) ([]byte, error) {
 	return result, nil
 }
 
+// signDigest signs a pre-computed 32-byte hash directly, unlike signECDSA
+// which Keccak-hashes its input first. Used for EIP-712 digests, which are
+// already the final hash to sign — hashing them again would sign the wrong value.
+func signDigest(key *secp256k1.PrivateKey, digest []byte) ([]byte, error) {
+	if len(digest) != 32 {
+		return nil, fmt.Errorf("digest must be 32 bytes, got %d", len(digest))
+	}
+	sig := ecdsa.SignCompact(key, digest, false)
+	result := make([]byte, 65)
+	copy(result[0:32], sig[1:33])
+	copy(result[32:64], sig[33:65])
+	result[64] = sig[0]
+	return result, nil
+}
+
 func keccak256(data []byte) []byte {
 	h := sha3.NewLegacyKeccak256()
 	h.Write(data)
