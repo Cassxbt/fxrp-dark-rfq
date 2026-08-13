@@ -470,18 +470,32 @@ func (e *Extension) processRfqClose(action teetypes.Action, df *instruction.Data
 		return buildResult(action, df, nil, 0, fmt.Errorf("signing Fill: %w", err))
 	}
 
-	txHash, err := submitSettle(rfqID, rfq.Intent, winner.Quote, fillExpiry, attestationSig)
-	if err != nil {
-		return buildResult(action, df, nil, 0, fmt.Errorf("submitting settle tx: %w", err))
-	}
+	// Submitted asynchronously, not awaited here — discovered live, not by
+	// inspection: the framework's own action-response cycle has a hardcoded,
+	// non-configurable 2-second timeout (tee-node internal/settings.ProxyTimeout),
+	// and dialing the chain, fetching the chain ID, and broadcasting a tx
+	// reliably takes longer than that. The correct place to confirm settlement
+	// is the on-chain Filled event, not this HTTP response anyway — a frontend
+	// trusting a synchronous "settled" claim from the extension rather than
+	// watching the chain would be trusting the TEE's word over the ledger,
+	// which is backwards for a system whose whole point is on-chain
+	// verifiability. This handler reports a match; the chain reports settlement.
+	go func() {
+		txHash, err := submitSettle(rfqID, rfq.Intent, winner.Quote, fillExpiry, attestationSig)
+		if err != nil {
+			logger.Errorf("RFQ %s matched but settle submission failed: %v", rfqID.Hex(), err)
+			return
+		}
+		logger.Infof("RFQ %s matched: maker %s, settle tx %s (confirm via the Filled event, not this log)", rfqID.Hex(), winner.Quote.Maker.Hex(), txHash)
+	}()
 
 	respData, _ := json.Marshal(map[string]any{
 		"matched": true,
 		"maker":   winner.Quote.Maker.Hex(),
 		"price":   winner.Quote.Price.String(),
-		"txHash":  txHash,
+		"note":    "settlement submitted asynchronously — watch the RfqSettlement contract's Filled event on-chain to confirm, do not trust this response alone",
 	})
-	logger.Infof("RFQ %s matched: maker %s, tx %s", rfqID.Hex(), winner.Quote.Maker.Hex(), txHash)
+	logger.Infof("RFQ %s matched: maker %s, settlement submission in progress", rfqID.Hex(), winner.Quote.Maker.Hex())
 	return buildResult(action, df, respData, 1, nil)
 }
 

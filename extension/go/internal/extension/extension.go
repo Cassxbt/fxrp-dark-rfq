@@ -68,10 +68,36 @@ func (e *Extension) stateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// processAction parses action.Data.Message into a DataFixed, but the shape of
+// that JSON differs by dispatch path — discovered by tracing a live "originalMessage
+// is empty" failure back to internal/processors/direct/default.go in the
+// tee-node source, not documented anywhere:
+//   - On-chain (InstructionSender): already DataFixed-shaped JSON.
+//   - Direct (/direct, what RFQ uses): DirectInstruction-shaped JSON
+//     ({opType, opCommand, message}), posted to /action completely unwrapped.
+//     Parsing that directly as DataFixed silently leaves OriginalMessage empty
+//     because the field is named "message", not "originalMessage" — no error,
+//     just a wrong-shaped struct. This is why the original "DO NOT MODIFY"
+//     boilerplate needed changing: it only handled the on-chain shape.
 func (e *Extension) processAction(action teetypes.Action) (int, []byte) {
-	dataFixed, err := processorutils.Parse[instruction.DataFixed](action.Data.Message)
-	if err != nil {
-		return http.StatusBadRequest, []byte(fmt.Sprintf("decoding fixed data: %v", err))
+	var dataFixed *instruction.DataFixed
+
+	if action.Data.Type == teetypes.Direct {
+		di, err := processorutils.Parse[teetypes.DirectInstruction](action.Data.Message)
+		if err != nil {
+			return http.StatusBadRequest, []byte(fmt.Sprintf("decoding direct instruction: %v", err))
+		}
+		dataFixed = &instruction.DataFixed{
+			OPType:          di.OPType,
+			OPCommand:       di.OPCommand,
+			OriginalMessage: di.Message,
+		}
+	} else {
+		var err error
+		dataFixed, err = processorutils.Parse[instruction.DataFixed](action.Data.Message)
+		if err != nil {
+			return http.StatusBadRequest, []byte(fmt.Sprintf("decoding fixed data: %v", err))
+		}
 	}
 
 	switch {
