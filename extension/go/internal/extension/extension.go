@@ -87,6 +87,23 @@ func (e *Extension) processAction(action teetypes.Action) (int, []byte) {
 		if err != nil {
 			return http.StatusBadRequest, []byte(fmt.Sprintf("decoding direct instruction: %v", err))
 		}
+
+		// SECURITY: only RFQ is allowed via the Direct path. Code-review finding —
+		// before the message-shape fix above, KEY/UPDATE sent via /direct always
+		// failed with an empty OriginalMessage, which accidentally protected the
+		// attested-signer key from being overwritten by anyone who could reach the
+		// tunnel. Fixing the parsing bug removed that accidental protection: without
+		// this check, anyone could GET /info for the TEE's pubkey, encrypt their own
+		// chosen private key, and POST {opType:"KEY",opCommand:"UPDATE"} to /direct —
+		// overwriting the exact key RfqSettlement trusts without on-chain
+		// re-verification. KEY management stays on the on-chain InstructionSender
+		// path only, where dispatching it costs real gas and leaves an auditable
+		// sender — not this unauthenticated-at-this-layer endpoint.
+		if di.OPType != teeutils.ToHash(config.OPTypeRfq) {
+			return http.StatusForbidden, []byte(fmt.Sprintf(
+				"op type %s is not permitted via the /direct dispatch path — only %s is", di.OPType.Hex(), config.OPTypeRfq))
+		}
+
 		dataFixed = &instruction.DataFixed{
 			OPType:          di.OPType,
 			OPCommand:       di.OPCommand,
@@ -109,8 +126,10 @@ func (e *Extension) processAction(action teetypes.Action) (int, []byte) {
 
 	default:
 		return http.StatusNotImplemented, []byte(fmt.Sprintf(
-			"unsupported op type: received %s, expected %s (%s)",
-			dataFixed.OPType.Hex(), teeutils.ToHash(config.OPTypeKey).Hex(), config.OPTypeKey,
+			"unsupported op type: received %s, expected %s (%s) or %s (%s)",
+			dataFixed.OPType.Hex(),
+			teeutils.ToHash(config.OPTypeKey).Hex(), config.OPTypeKey,
+			teeutils.ToHash(config.OPTypeRfq).Hex(), config.OPTypeRfq,
 		))
 	}
 }

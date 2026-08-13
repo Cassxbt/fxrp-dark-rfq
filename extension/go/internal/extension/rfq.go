@@ -470,6 +470,14 @@ func (e *Extension) processRfqClose(action teetypes.Action, df *instruction.Data
 		return buildResult(action, df, nil, 0, fmt.Errorf("signing Fill: %w", err))
 	}
 
+	// Fast, local, no-network check before committing to "matched" — catches an
+	// obviously broken deployment (missing env vars) synchronously, so a
+	// misconfiguration doesn't silently report matched:true with no way for the
+	// caller to ever learn submission never had a chance (code-review finding).
+	if err := checkSettlerConfigured(); err != nil {
+		return buildResult(action, df, nil, 0, fmt.Errorf("cannot submit settlement: %w", err))
+	}
+
 	// Submitted asynchronously, not awaited here — discovered live, not by
 	// inspection: the framework's own action-response cycle has a hardcoded,
 	// non-configurable 2-second timeout (tee-node internal/settings.ProxyTimeout),
@@ -480,7 +488,18 @@ func (e *Extension) processRfqClose(action teetypes.Action, df *instruction.Data
 	// watching the chain would be trusting the TEE's word over the ledger,
 	// which is backwards for a system whose whole point is on-chain
 	// verifiability. This handler reports a match; the chain reports settlement.
+	//
+	// Panic recovery is explicit here (code-review finding): net/http's Server
+	// only recovers panics in the goroutine actually serving the request: a
+	// spawned child goroutine is not covered by that, and an unrecovered panic
+	// in submitSettle would crash the whole extension process, not just this
+	// one RFQ.
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Errorf("RFQ %s: panic in async settle submission (recovered, process still running): %v", rfqID.Hex(), r)
+			}
+		}()
 		txHash, err := submitSettle(rfqID, rfq.Intent, winner.Quote, fillExpiry, attestationSig)
 		if err != nil {
 			logger.Errorf("RFQ %s matched but settle submission failed: %v", rfqID.Hex(), err)
@@ -610,6 +629,19 @@ var (
 	settlerInstance *settler
 	settlerInitErr  error
 )
+
+// checkSettlerConfigured is a fast, local, no-network precondition check —
+// deliberately separate from loadSettler, which dials the chain and is the
+// slow part that has to stay inside the async goroutine. This just confirms
+// the required env vars exist, so a misconfigured deployment fails the
+// RFQ/CLOSE request synchronously instead of silently reporting matched:true
+// with no path for the caller to ever learn submission never had a chance.
+func checkSettlerConfigured() error {
+	if os.Getenv("CHAIN_URL") == "" || os.Getenv("RFQ_HOT_KEY") == "" || os.Getenv("RFQ_SETTLEMENT_ADDRESS") == "" {
+		return fmt.Errorf("CHAIN_URL, RFQ_HOT_KEY, and RFQ_SETTLEMENT_ADDRESS must all be set")
+	}
+	return nil
+}
 
 func loadSettler() (*settler, error) {
 	settlerOnce.Do(func() {

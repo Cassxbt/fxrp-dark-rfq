@@ -99,12 +99,20 @@ func pollResult(t *testing.T, proxyURL string, actionID common.Hash) actionResul
 	var last actionResultResponse
 	for i := 0; i < 15; i++ {
 		resp, err := http.Get(proxyURL + "/action/result/" + actionID.Hex() + "?submissionTag=submit")
-		if err == nil && resp.StatusCode == http.StatusOK {
-			if decErr := json.NewDecoder(resp.Body).Decode(&last); decErr == nil && last.Result.Status != 0 {
+		if err == nil {
+			// Close unconditionally on every non-nil response, not just the
+			// happy-path branch below — a transient non-200 across 15 poll
+			// iterations previously leaked one socket per bad response
+			// (code-review finding).
+			if resp.StatusCode == http.StatusOK {
+				decErr := json.NewDecoder(resp.Body).Decode(&last)
 				resp.Body.Close()
-				return last
+				if decErr == nil && last.Result.Status != 0 {
+					return last
+				}
+			} else {
+				resp.Body.Close()
 			}
-			resp.Body.Close()
 		}
 		time.Sleep(2 * time.Second)
 	}
@@ -183,24 +191,21 @@ func TestRfqEndToEnd(t *testing.T) {
 
 	pubkey := fetchTeePubkey(t, proxyURL)
 
-	// Step 1: load an attested-signer key into the TEE via /direct KEY/UPDATE —
-	// same OPType/OPCommand the boilerplate sign path already uses, just
-	// dispatched off-chain instead of via InstructionSender.
-	signerKeyBytes := make([]byte, 32)
-	signerKeyBytes[31] = 0x77
-	signerKey := dcrsecp256k1.PrivKeyFromBytes(signerKeyBytes)
-	signerAddr := gethcrypto.PubkeyToAddress(*mustPubkey(t, signerKey))
-	t.Logf("attested signer address: %s (must be whitelisted on-chain via setAttestedSigner before CLOSE will produce a non-reverting settle)", signerAddr.Hex())
+	// Prerequisite, not automated here: the attested signer key must already be
+	// loaded via the on-chain InstructionSender path (e.g. `go run
+	// ./tools/cmd/run-test`, or any KEY/UPDATE sent as a real transaction), then
+	// its address whitelisted on-chain via setAttestedSigner.
+	//
+	// KEY/UPDATE is deliberately NOT dispatchable here via /direct — that was
+	// a code-review finding on an earlier version of this test: /direct has no
+	// auth at this layer, so loading arbitrary keys through it would let anyone
+	// who can reach the tunnel overwrite the extension's signing key. extension.go's
+	// processAction now hard-rejects any OPType other than RFQ on the Direct path;
+	// this test respects that boundary rather than routing around it.
+	// If CLOSE below fails with "no attested signer key stored," that means this
+	// prerequisite wasn't met — set it up first, this test won't do it for you.
 
-	updateCiphertext := encryptToTee(t, pubkey, signerKeyBytes)
-	updateID := postDirect(t, proxyURL, "KEY", "UPDATE", updateCiphertext)
-	updateResult := pollResult(t, proxyURL, updateID)
-	if updateResult.Result.Status != 1 {
-		t.Fatalf("KEY/UPDATE failed: %s", updateResult.Result.Log)
-	}
-	t.Log("KEY/UPDATE succeeded — attested signer key loaded")
-
-	// Step 2: open an RFQ as a fresh taker.
+	// Step 1: open an RFQ as a fresh taker.
 	takerKeyBytes := make([]byte, 32)
 	takerKeyBytes[31] = 0x11
 	takerKey := dcrsecp256k1.PrivKeyFromBytes(takerKeyBytes)
@@ -232,7 +237,7 @@ func TestRfqEndToEnd(t *testing.T) {
 	rfqID := common.HexToHash(openResp.RfqID)
 	t.Logf("RFQ opened: %s", rfqID.Hex())
 
-	// Step 3: two makers quote — proves the TEE picks a winner, not a 1:1 relay.
+	// Step 2: two makers quote — proves the TEE picks a winner, not a 1:1 relay.
 	makerAKeyBytes := make([]byte, 32)
 	makerAKeyBytes[31] = 0x22
 	makerAKey := dcrsecp256k1.PrivKeyFromBytes(makerAKeyBytes)
@@ -257,7 +262,7 @@ func TestRfqEndToEnd(t *testing.T) {
 	submitQuote(makerBAddr, makerBKey, 2_000_000_000_000_000_000) // 2.00 — better, should win
 	t.Log("both maker quotes accepted")
 
-	// Step 4: close and expect makerB (lower price on a buy) to win.
+	// Step 3: close and expect makerB (lower price on a buy) to win.
 	closeID := postDirect(t, proxyURL, "RFQ", "CLOSE", rfqID.Bytes())
 	closeResult := pollResult(t, proxyURL, closeID)
 	if closeResult.Result.Status != 1 {
