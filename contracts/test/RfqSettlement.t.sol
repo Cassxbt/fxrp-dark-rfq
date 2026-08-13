@@ -154,6 +154,26 @@ contract RfqSettlementTest is Test {
         rfq.settle(fill, badSig);
     }
 
+    /// Regression test for the code-review finding: floor division in the decimal
+    /// math could zero out quoteAmount for a tiny price while size still transfers
+    /// in full — 999999 FXRP-units for free. Empirically reproduced during review,
+    /// now guarded in the contract and pinned here so it can't silently come back.
+    function test_RevertsOnZeroQuoteAmount() public {
+        RfqSettlement.Fill memory fill = RfqSettlement.Fill({
+            rfqId: keccak256("rfq-zero-quote"),
+            taker: taker,
+            maker: maker,
+            side: RfqSettlement.Side.TakerBuy,
+            size: 999_999,
+            price: 1, // 1 wei WAD price — floors to 0 quoteAmount pre-fix
+            expiry: block.timestamp + 120
+        });
+
+        bytes memory sig = _sign(fill);
+        vm.expectRevert(abi.encodeWithSelector(RfqSettlement.ZeroAmount.selector, fill.size, uint256(0)));
+        rfq.settle(fill, sig);
+    }
+
     /// FTSO bound: mocked feed per BUILD-SPEC.md's own instruction (the live XRP/USD
     /// price is not $2.00, so an unmocked test would fail this check). Price within
     /// the 10% tolerance settles normally.
@@ -194,15 +214,18 @@ contract RfqSettlementTest is Test {
         });
 
         bytes memory sig = _sign(fill);
-        vm.expectRevert();
+        // refWad for a 2*10^5 value at -5 decimals is 2e18 (verified by hand in
+        // §2.1's decimal-math note); price=1e18 is the value that must appear here.
+        vm.expectRevert(abi.encodeWithSelector(RfqSettlement.PriceOutOfBounds.selector, uint256(1e18), uint256(2e18), uint256(1000)));
         rfq.settle(fill, sig);
     }
 
     function test_FtsoBound_StaleFeed_Reverts() public {
         vm.prank(owner);
         rfq.setFtsoBound(IFtsoV2(address(ftso)), bytes21(0), 1000, 300);
-        ftso.setFeed(2 * 10 ** 5, -5, uint64(block.timestamp));
-        vm.warp(block.timestamp + 301);
+        uint256 feedTs = block.timestamp;
+        ftso.setFeed(2 * 10 ** 5, -5, uint64(feedTs));
+        vm.warp(feedTs + 301);
 
         RfqSettlement.Fill memory fill = RfqSettlement.Fill({
             rfqId: keccak256("rfq-ftso-stale"),
@@ -215,7 +238,7 @@ contract RfqSettlementTest is Test {
         });
 
         bytes memory sig = _sign(fill);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(RfqSettlement.StaleFeed.selector, uint64(feedTs), feedTs + 301, uint256(300)));
         rfq.settle(fill, sig);
     }
 }

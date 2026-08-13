@@ -7,6 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @dev Minimal Flare FTSOv2 feed-read interface. Feed id for Coston2 XRP/USD
 /// must be confirmed live before deployment — see BUILD-SPEC.md §2.1 / §4.1b.
@@ -83,6 +84,9 @@ contract RfqSettlement is EIP712, Ownable {
     error UntrustedSigner(address signer);
     error PriceOutOfBounds(uint256 price, uint256 refPrice, uint256 toleranceBps);
     error StaleFeed(uint64 feedTimestamp, uint256 nowTs, uint256 maxStaleness);
+    error ZeroAmount(uint256 size, uint256 quoteAmount);
+    error InvalidToleranceBps(uint256 toleranceBps);
+    error FeedDecimalsOutOfRange(int8 refDecimals);
 
     constructor(IERC20 _baseToken, IERC20 _quoteToken, address initialOwner)
         EIP712("RfqSettlement", "1")
@@ -98,6 +102,7 @@ contract RfqSettlement is EIP712, Ownable {
     }
 
     function setFtsoBound(IFtsoV2 _ftso, bytes21 _feedId, uint256 _toleranceBps, uint256 _maxStaleness) external onlyOwner {
+        if (_toleranceBps > 10_000) revert InvalidToleranceBps(_toleranceBps);
         ftso = _ftso;
         ftsoFeedId = _feedId;
         ftsoToleranceBps = _toleranceBps;
@@ -128,15 +133,23 @@ contract RfqSettlement is EIP712, Ownable {
 
         uint8 quoteDecimals = IERC20Metadata(address(quoteToken)).decimals();
         uint8 baseDecimals = IERC20Metadata(address(baseToken)).decimals();
-        uint256 quoteAmount = (fill.size * fill.price * (10 ** quoteDecimals)) / ((10 ** baseDecimals) * 1e18);
+        // Math.mulDiv guards the intermediate size*price multiplication against
+        // overflow, rather than re-deriving that safety by hand (round-2 review finding).
+        uint256 quoteAmount = Math.mulDiv(fill.size * fill.price, 10 ** quoteDecimals, (10 ** baseDecimals) * 1e18);
 
-        if (fill.side == Side.TakerBuy) {
-            baseToken.safeTransferFrom(fill.maker, fill.taker, fill.size);
-            quoteToken.safeTransferFrom(fill.taker, fill.maker, quoteAmount);
-        } else {
-            baseToken.safeTransferFrom(fill.taker, fill.maker, fill.size);
-            quoteToken.safeTransferFrom(fill.maker, fill.taker, quoteAmount);
-        }
+        // Defense-in-depth against a degenerate Fill (buggy/compromised attested
+        // signer — the contract otherwise trusts it fully per the disclosed trust
+        // model). Floor division can zero out quoteAmount for a tiny price while
+        // `size` still transfers in full; caught empirically by the code-review
+        // pass, not by the original test suite. size==0 is symmetric nonsense.
+        if (fill.size == 0 || quoteAmount == 0) revert ZeroAmount(fill.size, quoteAmount);
+
+        (address baseFrom, address baseTo, address quoteFrom, address quoteTo) = fill.side == Side.TakerBuy
+            ? (fill.maker, fill.taker, fill.taker, fill.maker)
+            : (fill.taker, fill.maker, fill.maker, fill.taker);
+
+        baseToken.safeTransferFrom(baseFrom, baseTo, fill.size);
+        quoteToken.safeTransferFrom(quoteFrom, quoteTo, quoteAmount);
 
         emit Filled(fill.rfqId, fill.taker, fill.maker, fill.side, fill.size, fill.price);
     }
@@ -148,6 +161,12 @@ contract RfqSettlement is EIP712, Ownable {
         if (address(ftso) == address(0)) return;
 
         (uint256 refValue, int8 refDecimals, uint64 refTimestamp) = ftso.getFeedById(ftsoFeedId);
+
+        // Bound-check the oracle-supplied exponent before using it — a wrong feed
+        // id or an oracle bug returning an out-of-range value would otherwise let
+        // `10 ** uint256(wadExponent)` overflow uint256's checked-math revert,
+        // bricking every settle() until the owner notices (round-2 review finding).
+        if (refDecimals < -30 || refDecimals > 30) revert FeedDecimalsOutOfRange(refDecimals);
 
         if (block.timestamp > refTimestamp && block.timestamp - refTimestamp > ftsoMaxStaleness) {
             revert StaleFeed(refTimestamp, block.timestamp, ftsoMaxStaleness);
