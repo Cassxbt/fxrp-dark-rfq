@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ConnectWallet } from "./ConnectWallet";
+import { ExtStatus } from "./ExtStatus";
 
 export function TopBar({ active }: { active: "taker" | "maker" }) {
   return (
@@ -27,9 +28,8 @@ export function TopBar({ active }: { active: "taker" | "maker" }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          <span className="hidden items-center gap-1.5 text-[11px] text-faint sm:flex">
-            <span className="h-1.5 w-1.5 rounded-full bg-positive" />
-            Coston2
+          <span className="hidden sm:flex">
+            <ExtStatus />
           </span>
           <ConnectWallet />
         </div>

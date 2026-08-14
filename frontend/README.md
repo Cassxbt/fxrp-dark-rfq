@@ -10,7 +10,11 @@ npm install
 npm run dev
 ```
 
-Set `NEXT_PUBLIC_EXT_PROXY_URL` if the ngrok tunnel URL changes from the one hardcoded as a default in `lib/contracts.ts`.
+The browser talks to the extension through this app's own route at `/api/ext`
+— never the tunnel directly, since that proxy sends no CORS headers and ngrok
+serves an interstitial to browser User-Agents. Point that route at a tunnel
+with the `EXT_PROXY_ORIGIN` server env var. `NEXT_PUBLIC_EXT_PROXY_URL` is
+only for Node scripts, which have neither problem and skip the hop.
 
 ## Before touching `lib/ecies.ts`
 

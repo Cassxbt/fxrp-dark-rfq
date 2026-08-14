@@ -4,7 +4,7 @@ Sealed-bid RFQ matcher for FXRP that matches privately inside a Flare Confidenti
 
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?style=flat-square&logo=solidity&logoColor=white)](contracts/src/RfqSettlement.sol)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=next.js&logoColor=white)](frontend/package.json)
-[![Live](https://img.shields.io/badge/live-app-c9a84c?style=flat-square)](https://frontend-pi-ten-33.vercel.app)
+[![Live](https://img.shields.io/badge/live-app-c9a84c?style=flat-square)](https://fxrp-dark-rfq.vercel.app)
 [![Network](https://img.shields.io/badge/Network-Coston2-e84142?style=flat-square)](https://coston2-explorer.flare.network)
 [![tests](https://img.shields.io/github/actions/workflow/status/Cassxbt/fxrp-dark-rfq/test.yml?style=flat-square&label=tests)](https://github.com/Cassxbt/fxrp-dark-rfq/actions/workflows/test.yml)
 
@@ -41,8 +41,9 @@ An RFQ desk leaks information by design: a public limit order book shows your si
 
 ```mermaid
 graph TD
-    A[Taker wallet] -- "EIP-712 RfqIntent, ECIES-encrypted" --> B["POST /direct (ngrok tunnel)"]
-    C[Maker wallet] -- "EIP-712 Quote, ECIES-encrypted" --> B
+    A[Taker wallet] -- "EIP-712 RfqIntent, ECIES-encrypted" --> P["POST /api/ext (same origin)"]
+    C[Maker wallet] -- "EIP-712 Quote, ECIES-encrypted" --> P
+    P -- "server-side, adds ngrok header" --> B["reserved ngrok tunnel"]
     B --> D[tee-proxy]
     D --> E[tee-node]
     E --> F["extension /action (Go, simulated TEE)"]
@@ -67,16 +68,17 @@ Next.js 16 with wagmi/viem.
 
 ## How to verify
 
-**The explorer transaction above is the evidence of record.** It settled on a
-public chain and stays checkable whether or not anything of ours is running.
-Read `Filled`'s args, then the two ERC-20 `Transfer` logs beside it.
+**The two explorer transactions above are the evidence of record.** They
+settled on a public chain and stay checkable whether or not anything of ours
+is running. Read each `Filled`'s args, then the two ERC-20 `Transfer` logs
+beside it — and note the winner flips between the buy and the sell.
 
 To read the code behind it: [`rfq.go`](extension/go/internal/extension/rfq.go)
 matches inside the TEE, [`RfqSettlement.sol`](contracts/src/RfqSettlement.sol)
 settles. `forge test` and `go test ./...` both run in
 [CI](https://github.com/Cassxbt/fxrp-dark-rfq/actions/workflows/test.yml).
 
-The live app is deployed at **[https://frontend-pi-ten-33.vercel.app](https://frontend-pi-ten-33.vercel.app)**.
+The live app is deployed at **[https://fxrp-dark-rfq.vercel.app](https://fxrp-dark-rfq.vercel.app)**.
 
 It is a secondary path, and honestly so: the UI is on Vercel, but the FCC
 extension itself runs in Docker on a dev machine behind an ngrok tunnel. The
@@ -129,6 +131,7 @@ Proof-of-fill transactions: [buy `0xe158ffe7…`](https://coston2-explorer.flare
 - **`CLOSE` is unauthenticated**, and the `/direct` HTTP layer that carries OPEN/QUOTE/CLOSE has no authentication at all. Any address can trigger matching for any open RFQ ID. `OPEN`'s result also returns `{rfqId, side, size}` in cleartext to anyone polling it — side and size are not as tightly held as the on-chain summary alone would suggest, though the limit price and losing quotes never leave the TEE. Disclosed scope cuts, not oversights.
 - **On-chain settlement is asynchronous from the `CLOSE` call** (FCC's response window doesn't fit a chain round trip). The taker UI polls `settled()` and reports success/failure explicitly rather than leaving the call looking like it hung.
 - **The contract verifies only the TEE's `Fill` signature**, not the underlying `RfqIntent`/`Quote` signatures a second time — those are checked once inside the extension.
+- **`/api/ext/*` is an unauthenticated relay.** The browser cannot reach the extension directly (no CORS headers, plus ngrok's interstitial), so the deployed app forwards through its own server route. That route adds no auth of its own — it is the same trust model as the raw tunnel, just easier to find. The matcher behind it is equally unauthenticated by design; see `CLOSE` above.
 - **The extension is served through a laptop ngrok tunnel**, not infrastructure. The UI is deployed, the enclave is not — it dies when the host sleeps. The RFQ book is in-memory too, so a restart wipes open RFQs.
 
 ## Repo layout

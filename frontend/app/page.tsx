@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Tag, Medallion } from "@/components/ui";
+import { ExtStatus } from "@/components/ExtStatus";
 import {
   RFQ_SETTLEMENT_ADDRESS,
   FXRP_ADDRESS,
@@ -74,9 +75,8 @@ export default function Home() {
             <a href="#visibility" className="transition-colors duration-150 hover:text-ink">Who sees what</a>
             <a href="#trust" className="transition-colors duration-150 hover:text-ink">Trust model</a>
           </nav>
-          <span className="ml-auto flex items-center gap-1.5 text-[11px] text-faint">
-            <span className="h-1.5 w-1.5 rounded-full bg-positive" />
-            Coston2
+          <span className="ml-auto">
+            <ExtStatus />
           </span>
         </header>
 
