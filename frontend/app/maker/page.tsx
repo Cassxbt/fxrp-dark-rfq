@@ -91,7 +91,7 @@ export default function MakerPage() {
   }
 
   return (
-    <main className="mx-auto max-w-xl p-8 space-y-6">
+    <main className="mx-auto w-full max-w-xl p-8 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Maker — quote on an RFQ</h1>
         <ConnectWallet />
