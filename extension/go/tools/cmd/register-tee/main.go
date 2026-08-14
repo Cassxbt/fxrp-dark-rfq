@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/hex"
-	"sign-extension/tools/pkg/configs"
-	"sign-extension/tools/pkg/fccutils"
-	"sign-extension/tools/pkg/support"
+	"fxrp-dark-rfq-extension/tools/pkg/configs"
+	"fxrp-dark-rfq-extension/tools/pkg/fccutils"
+	"fxrp-dark-rfq-extension/tools/pkg/support"
 	"flag"
 	"os"
 

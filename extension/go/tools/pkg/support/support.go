@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	stderrors "errors"
-	"sign-extension/tools/pkg/configs"
+	"fxrp-dark-rfq-extension/tools/pkg/configs"
 	"fmt"
 	"math/big"
 	"os"

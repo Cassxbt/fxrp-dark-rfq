@@ -9,8 +9,8 @@ import (
 
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
-	"sign-extension/internal/config"
-	extension "sign-extension/internal/extension"
+	"fxrp-dark-rfq-extension/internal/config"
+	extension "fxrp-dark-rfq-extension/internal/extension"
 )
 
 func main() {

@@ -30,7 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"sign-extension/internal/extension/rfqcontract"
+	"fxrp-dark-rfq-extension/internal/extension/rfqcontract"
 
 	dcrsecp256k1 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
@@ -102,8 +102,7 @@ func pollResult(t *testing.T, proxyURL string, actionID common.Hash) actionResul
 		if err == nil {
 			// Close unconditionally on every non-nil response, not just the
 			// happy-path branch below — a transient non-200 across 15 poll
-			// iterations previously leaked one socket per bad response
-			// (code-review finding).
+			// iterations previously leaked one socket per bad response.
 			if resp.StatusCode == http.StatusOK {
 				decErr := json.NewDecoder(resp.Body).Decode(&last)
 				resp.Body.Close()
@@ -197,7 +196,7 @@ func TestRfqEndToEnd(t *testing.T) {
 	// its address whitelisted on-chain via setAttestedSigner.
 	//
 	// KEY/UPDATE is deliberately NOT dispatchable here via /direct — that was
-	// a code-review finding on an earlier version of this test: /direct has no
+	// wrong in an earlier version of this test: /direct has no
 	// auth at this layer, so loading arbitrary keys through it would let anyone
 	// who can reach the tunnel overwrite the extension's signing key. extension.go's
 	// processAction now hard-rejects any OPType other than RFQ on the Direct path;

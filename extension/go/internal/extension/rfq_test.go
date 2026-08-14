@@ -168,7 +168,7 @@ func TestSelectWinner_ExpiredQuoteExcluded(t *testing.T) {
 	}
 }
 
-// Regression test for the code-review finding: selectWinner previously only
+// Regression test: selectWinner previously only
 // checked each quote's own expiry, never the taker's RfqIntent expiry — a
 // late CLOSE could still pick a winner and sign+submit a doomed on-chain tx.
 func TestSelectWinner_ExpiredIntentExcludesEvenAValidQuote(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"math/big"
 	"net/http"
 
-	"sign-extension/internal/config"
+	"fxrp-dark-rfq-extension/internal/config"
 
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	"github.com/flare-foundation/go-flare-common/pkg/tee/instruction"

@@ -18,10 +18,10 @@ import (
 	"strings"
 	"time"
 
-	"sign-extension/tools/pkg/configs"
-	"sign-extension/tools/pkg/fccutils"
-	"sign-extension/tools/pkg/support"
-	instrutils "sign-extension/tools/pkg/utils"
+	"fxrp-dark-rfq-extension/tools/pkg/configs"
+	"fxrp-dark-rfq-extension/tools/pkg/fccutils"
+	"fxrp-dark-rfq-extension/tools/pkg/support"
+	instrutils "fxrp-dark-rfq-extension/tools/pkg/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

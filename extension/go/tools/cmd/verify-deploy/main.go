@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"sign-extension/tools/pkg/configs"
-	"sign-extension/tools/pkg/support"
-	"sign-extension/tools/pkg/validate"
+	"fxrp-dark-rfq-extension/tools/pkg/configs"
+	"fxrp-dark-rfq-extension/tools/pkg/support"
+	"fxrp-dark-rfq-extension/tools/pkg/validate"
 
 	"github.com/ethereum/go-ethereum/common"
 )

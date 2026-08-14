@@ -5,9 +5,9 @@ import (
 	"flag"
 	"os"
 	"strings"
-	"sign-extension/tools/pkg/configs"
-	"sign-extension/tools/pkg/fccutils"
-	"sign-extension/tools/pkg/support"
+	"fxrp-dark-rfq-extension/tools/pkg/configs"
+	"fxrp-dark-rfq-extension/tools/pkg/fccutils"
+	"fxrp-dark-rfq-extension/tools/pkg/support"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 )

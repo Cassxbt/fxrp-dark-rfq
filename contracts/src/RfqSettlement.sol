@@ -133,7 +133,7 @@ contract RfqSettlement is EIP712, Ownable {
         uint8 baseDecimals = IERC20Metadata(address(baseToken)).decimals();
         // fill.size * fill.price must not be computed as a plain checked-arithmetic
         // argument — that multiplication alone can overflow-revert before mulDiv ever
-        // runs, defeating the point (audit finding). Scaling fill.price by
+        // runs, defeating the point. Scaling fill.price by
         // 10**quoteDecimals first is safe in comparison: quoteDecimals is a small
         // token-metadata value (6-18), not an attacker-influenced multiplicand, so
         // mulDiv's own protected size*scaledPrice multiplication is what actually
@@ -144,8 +144,7 @@ contract RfqSettlement is EIP712, Ownable {
         // Defense-in-depth against a degenerate Fill (buggy/compromised attested
         // signer — the contract otherwise trusts it fully per the disclosed trust
         // model). Floor division can zero out quoteAmount for a tiny price while
-        // `size` still transfers in full; caught empirically by the code-review
-        // pass, not by the original test suite. size==0 is symmetric nonsense.
+        // `size` still transfers in full. size==0 is symmetric nonsense.
         if (fill.size == 0 || quoteAmount == 0) revert ZeroAmount(fill.size, quoteAmount);
 
         (address baseFrom, address baseTo, address quoteFrom, address quoteTo) = fill.side == Side.TakerBuy
@@ -169,7 +168,7 @@ contract RfqSettlement is EIP712, Ownable {
         // Bound-check the oracle-supplied exponent before using it — a wrong feed
         // id or an oracle bug returning an out-of-range value would otherwise let
         // `10 ** uint256(wadExponent)` overflow uint256's checked-math revert,
-        // bricking every settle() until the owner notices (round-2 review finding).
+        // bricking every settle() until the owner notices.
         if (refDecimals < -30 || refDecimals > 30) revert FeedDecimalsOutOfRange(refDecimals);
 
         if (block.timestamp > refTimestamp && block.timestamp - refTimestamp > ftsoMaxStaleness) {

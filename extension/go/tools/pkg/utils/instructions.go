@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"sign-extension/tools/pkg/contracts/sign"
-	"sign-extension/tools/pkg/fccutils"
-	"sign-extension/tools/pkg/support"
+	"fxrp-dark-rfq-extension/tools/pkg/contracts/sign"
+	"fxrp-dark-rfq-extension/tools/pkg/fccutils"
+	"fxrp-dark-rfq-extension/tools/pkg/support"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"

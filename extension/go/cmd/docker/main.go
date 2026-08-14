@@ -13,8 +13,8 @@ import (
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 	teeServer "github.com/flare-foundation/tee-node/pkg/server"
 
-	"sign-extension/internal/config"
-	extserver "sign-extension/pkg/server"
+	"fxrp-dark-rfq-extension/internal/config"
+	extserver "fxrp-dark-rfq-extension/pkg/server"
 )
 
 func main() {

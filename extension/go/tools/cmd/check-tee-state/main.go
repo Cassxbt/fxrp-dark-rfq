@@ -18,9 +18,9 @@ import (
 	"math/big"
 	"os"
 
-	"sign-extension/tools/pkg/configs"
-	"sign-extension/tools/pkg/fccutils"
-	"sign-extension/tools/pkg/support"
+	"fxrp-dark-rfq-extension/tools/pkg/configs"
+	"fxrp-dark-rfq-extension/tools/pkg/fccutils"
+	"fxrp-dark-rfq-extension/tools/pkg/support"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"

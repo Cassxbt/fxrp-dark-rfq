@@ -16,7 +16,7 @@ function opHash(s: string): `0x${string}` {
  * through unconverted would make Go's json.Unmarshal base64-decode "0x1a2b..."
  * into 99 garbage bytes instead of the real 65-byte signature, and
  * recoverSigner's explicit len(sig) != 65 check would reject every OPEN and
- * QUOTE (code-review finding — this broke the entire happy path, and the
+ * QUOTE (this broke the entire happy path, and the
  * project's own Go-to-Go integration test never exposed it because both
  * sides there used Go's default []byte marshaling consistently).
  */
@@ -58,7 +58,7 @@ export async function fetchTeePubKey(): Promise<Uint8Array> {
   // Zero-pad each coordinate to 32 bytes — the hex from /info is not
   // guaranteed fixed-width (a coordinate with a leading zero byte serializes
   // shorter), and writing it unpadded would misalign the byte layout
-  // (code-review finding, ~1/256 chance per coordinate but real).
+  // (~1/256 chance per coordinate, but real).
   pubKey.set(padTo32(hexToBytes(x)), 1);
   pubKey.set(padTo32(hexToBytes(y)), 33);
   cachedPubKey = pubKey;
@@ -77,7 +77,7 @@ interface DirectResult {
  * and dispatches it via the proxy's /direct endpoint. Polls for the result —
  * matches the pattern verified live against the real stack (see
  * extension/go/internal/extension/rfq_integration_test.go and
- * frontend/scripts/verify-ecies.mjs).
+ * frontend/scripts/verify-ecies.mts).
  */
 export async function sendRfqDirect(
   opCommand: "OPEN" | "QUOTE" | "CLOSE",

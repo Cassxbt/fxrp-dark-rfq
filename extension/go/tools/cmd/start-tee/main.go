@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"sign-extension/tools/pkg/fccutils"
-	echoserver "sign-extension/pkg/server"
+	"fxrp-dark-rfq-extension/tools/pkg/fccutils"
+	echoserver "fxrp-dark-rfq-extension/pkg/server"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

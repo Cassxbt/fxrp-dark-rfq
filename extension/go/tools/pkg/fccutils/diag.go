@@ -6,7 +6,7 @@ import (
 	stderrors "errors"
 	"fmt"
 
-	"sign-extension/tools/pkg/support"
+	"fxrp-dark-rfq-extension/tools/pkg/support"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"

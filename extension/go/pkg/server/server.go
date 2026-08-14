@@ -1,6 +1,6 @@
 package server
 
-import extension "sign-extension/internal/extension"
+import extension "fxrp-dark-rfq-extension/internal/extension"
 
 // StartExtension creates and starts the sign extension server in a goroutine.
 // Returns an error channel that receives any ListenAndServe failure (e.g., port already in use).

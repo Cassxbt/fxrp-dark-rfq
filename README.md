@@ -24,7 +24,7 @@ An RFQ desk leaks information by design: a public limit order book shows your si
 
 ## Features
 
-- **Sealed-bid matching** — taker limit price and losing maker quotes never touch the chain or a public order book; only the winning `Filled` event is public
+- **Sealed-bid matching** — taker limit price and losing maker quotes never touch the chain or a public order book; only `Filled` is on-chain
 - **Atomic on-chain settlement** — both ERC-20 legs (FXRP and USDT0) transfer in one transaction once the TEE-signed `Fill` is verified
 - **Real assets** — live FXRP and USDT0 on Coston2, not toy ERC-20s
 - **Real funded proof** — `scripts/e2e-demo.mts` runs the full OPEN → QUOTE ×2 → CLOSE → `Filled` flow against live Coston2 state through the actual production code paths, not a simulation
@@ -54,44 +54,37 @@ itself is unauthenticated, and `OPEN`'s result exposes `{rfqId, side, size}`
 in cleartext to anyone polling it — see Known limitations and
 [`docs/TRUST.md`](docs/TRUST.md).
 
-## Tech stack
+Solidity 0.8.24 (Foundry, OpenZeppelin) · Go FCC extension, simulated TEE ·
+Next.js 16 with wagmi/viem.
 
-| Component | Technology |
-|---|---|
-| Contract | Solidity 0.8.24 (Foundry, OpenZeppelin) |
-| Confidential compute | Flare Confidential Compute, Go extension, simulated TEE |
-| Frontend | Next.js 16 · wagmi · viem |
+## How to verify
 
-## Quickstart
+**The explorer transaction above is the evidence of record.** It settled on a
+public chain and stays checkable whether or not anything of ours is running.
+Read `Filled`'s args, then the two ERC-20 `Transfer` logs beside it.
+
+To read the code behind it: [`rfq.go`](extension/go/internal/extension/rfq.go)
+matches inside the TEE, [`RfqSettlement.sol`](contracts/src/RfqSettlement.sol)
+settles. `forge test` and `go test ./...` both run in
+[CI](https://github.com/Cassxbt/fxrp-dark-rfq/actions/workflows/test.yml).
+
+The live UI is a secondary path, and it depends on a laptop ngrok tunnel:
 
 ```bash
-git clone https://github.com/Cassxbt/fxrp-dark-rfq
-cd fxrp-dark-rfq/frontend
-npm install
-npm run dev
+cd frontend && npm install && npm run dev
 ```
 
-This starts the UI only — `/taker` and `/maker` render, but neither can
-actually open or quote an RFQ without the FCC extension running behind them,
-which for this submission means the live ngrok tunnel described in **Judge
-testing notes** below staying up, plus three funded Coston2 wallets. If you
-just want to see it work without any of that, the proof-of-fill transaction
-above and `scripts/e2e-demo.mts`'s output are the evidence — see
-[Usage](#usage) for both paths.
+`/taker` and `/maker` render standalone, but opening or quoting an RFQ needs
+the FCC extension reachable behind them (`NEXT_PUBLIC_EXT_PROXY_URL`, which
+falls back to the tunnel hardcoded in `frontend/lib/contracts.ts`) plus three
+funded Coston2 wallets. If `/info` doesn't respond, that tunnel is down —
+nothing about the fill above changes.
 
-## Configuration
-
-| Variable | Description | Required |
-|---|---|---|
-| `NEXT_PUBLIC_EXT_PROXY_URL` | URL of the FCC extension's proxy (`/info`, `/direct`) | No — falls back to the current default in `frontend/lib/contracts.ts` |
-
-The extension and its ngrok tunnel are already running against Coston2 for judging; see **Judge testing notes** below before relying on the live tunnel.
-
-## Usage
-
-1. **Taker** (`/taker`): connect a Coston2 wallet, pick buy/sell + size + limit price, click **Open RFQ** (approve, then sign). A shareable blob appears — `RFQ 0x... — taker is BUYING/SELLING X FXRP` — since there's no public listing.
-2. **Makers** (`/maker`, 2 different wallets): paste the RFQ ID, match the stated side/size, enter a price, click **Submit Quote** (approve, then sign). Use two different prices — this is what proves selection is happening, not pass-through.
-3. **Taker**: click **Close RFQ**. The UI polls the contract's `settled()` for up to ~30s and reports success or an explicit failure reason. A confirmed fill shows the winning maker, size, and price, pulled from the on-chain `Filled` event.
+Driving it: the taker opens (approve, sign) and gets an RFQ ID to hand to
+makers out of band, since there's no public listing. Two makers quote it at
+different prices — that difference is what shows selection is real rather than
+pass-through. The taker closes; the UI polls `settled()` for ~30s and then
+reads the `Filled` event back.
 
 ### Reproducing the funded proof (maintainers)
 
@@ -122,17 +115,14 @@ Proof-of-fill transaction: [`0xe158ffe7...a7a8e9`](https://coston2-explorer.flar
 - **`CLOSE` is unauthenticated**, and the `/direct` HTTP layer that carries OPEN/QUOTE/CLOSE has no authentication at all. Any address can trigger matching for any open RFQ ID. `OPEN`'s result also returns `{rfqId, side, size}` in cleartext to anyone polling it — side and size are not as tightly held as the on-chain summary alone would suggest, though the limit price and losing quotes never leave the TEE. Disclosed scope cuts, not oversights.
 - **On-chain settlement is asynchronous from the `CLOSE` call** (FCC's response window doesn't fit a chain round trip). The taker UI polls `settled()` and reports success/failure explicitly rather than leaving the call looking like it hung.
 - **The contract verifies only the TEE's `Fill` signature**, not the underlying `RfqIntent`/`Quote` signatures a second time — those are checked once inside the extension.
-
-### Judge testing notes
-
-The FCC extension is reachable through an ngrok tunnel whose URL is hardcoded as a fallback default in `frontend/lib/contracts.ts` — it goes dead if the host machine sleeps or the tunnel restarts. If `/taker` or `/maker` can't reach `/info`, the live tunnel is down; treat the proof-of-fill transaction above and `scripts/e2e-demo.mts`'s output as the evidence of record regardless of live tunnel uptime.
+- **The extension is served through a laptop ngrok tunnel**, not infrastructure. It dies when the host sleeps. The RFQ book is in-memory too, so a restart wipes open RFQs.
 
 ## Repo layout
 
 - `contracts/` — `RfqSettlement.sol` + Foundry tests (10 passing)
 - `extension/` — Go FCC extension: RFQ intake, matching, TEE-signed settlement submission (deploy/ops runbook in `extension/ops.md`)
 - `frontend/` — Next.js taker/maker UI + `scripts/e2e-demo.mts`
-- `docs/TRUST.md` — trust model detail beyond the Known limitations section below
+- `docs/TRUST.md` — trust model detail beyond the Known limitations above
 
 ## License
 

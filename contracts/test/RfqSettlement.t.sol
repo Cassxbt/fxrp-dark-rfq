@@ -7,8 +7,7 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockFtsoV2} from "./mocks/MockFtsoV2.sol";
 
 /// @dev Buy 1e6 FXRP-units (1 FXRP, 6 decimals) at 2.00 mUSD, and the
-/// equivalent sell — plus FTSO-bound coverage, mocked per
-/// the spec's own instruction ("tests must mock the FTSO feed").
+/// equivalent sell, plus FTSO-bound coverage against a mocked feed.
 contract RfqSettlementTest is Test {
     MockERC20 fxrp; // 6 decimals, matches FXRP's confirmed on-chain decimals
     MockERC20 musd; // 18 decimals, our choice
@@ -100,8 +99,8 @@ contract RfqSettlementTest is Test {
 
     /// The rest of this suite uses a 6/18 pair (FXRP/mUSD). Production is 6/6
     /// (FXRP/USDT0, both confirmed via cast call) — a judge running `forge test`
-    /// should see the real token shape covered, not just the historical mock pair
-    /// (audit finding). Mirrors the actual funded fill: 1 FXRP @ 2.95 USDT0.
+    /// should see the real token shape covered, not just the historical mock
+    /// pair. Mirrors the actual funded fill: 1 FXRP @ 2.95 USDT0.
     function test_TakerBuy_SixAndSix_MatchesLiveFillShape() public {
         MockERC20 usdt0 = new MockERC20("Mock USDT0", "USDT0", 6);
         RfqSettlement rfq6 = new RfqSettlement(fxrp, usdt0, owner);
@@ -193,7 +192,7 @@ contract RfqSettlementTest is Test {
         rfq.settle(fill, badSig);
     }
 
-    /// Regression test for the code-review finding: floor division in the decimal
+    /// Regression test: floor division in the decimal
     /// math could zero out quoteAmount for a tiny price while size still transfers
     /// in full — 999999 FXRP-units for free. Empirically reproduced during review,
     /// now guarded in the contract and pinned here so it can't silently come back.

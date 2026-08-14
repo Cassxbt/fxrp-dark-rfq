@@ -37,7 +37,12 @@ export default function MakerPage() {
     try {
       const sizeUnits = parseUnits(rfqSize, FXRP_DECIMALS);
       const priceWad = parseUnits(price, 18);
-      const expiry = BigInt(Math.floor(Date.now() / 1000) + 300); // 5 min
+      // Matches the taker intent's 15-minute window. A shorter quote validity
+      // is what a real maker would want (less time on the hook for a stale
+      // price), but anything under the intent's lifetime means selectWinner
+      // silently drops the quote as expired if the taker closes late — which
+      // reads as "no qualifying quote" rather than "your quote timed out".
+      const expiry = BigInt(Math.floor(Date.now() / 1000) + 900);
 
       // The maker's own quoted price makes this exact and knowable, unlike
       // the taker-buy case.

@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"sign-extension/tools/pkg/configs"
-	"sign-extension/tools/pkg/fccutils"
-	"sign-extension/tools/pkg/support"
-	instrutils "sign-extension/tools/pkg/utils"
-	"sign-extension/tools/pkg/validate"
+	"fxrp-dark-rfq-extension/tools/pkg/configs"
+	"fxrp-dark-rfq-extension/tools/pkg/fccutils"
+	"fxrp-dark-rfq-extension/tools/pkg/support"
+	instrutils "fxrp-dark-rfq-extension/tools/pkg/utils"
+	"fxrp-dark-rfq-extension/tools/pkg/validate"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"

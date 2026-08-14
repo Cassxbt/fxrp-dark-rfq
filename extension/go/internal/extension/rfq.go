@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"sign-extension/internal/extension/rfqcontract"
+	"fxrp-dark-rfq-extension/internal/extension/rfqcontract"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -45,7 +45,7 @@ type rfqIntent struct {
 }
 
 // quote mirrors the maker's signed EIP-712 Quote. RfqID is bound inside the
-// signed struct itself (round-3 fix) so a captured quote can't be replayed
+// signed struct itself so a captured quote can't be replayed
 // onto a different RFQ.
 type quote struct {
 	RfqID  common.Hash    `json:"rfqId"`
@@ -78,13 +78,13 @@ type quoteEntry struct {
 // rfqBook holds all state for the RFQ extension: open RFQs, and a nonce-reuse
 // guard that's independent of the RFQ map so a replayed intent is rejected
 // even after the RFQ it originally opened has already closed and been
-// forgotten (round-3 rfqNonce fix).
+// forgotten.
 //
 // usedNonces maps nonce -> the expiry of the intent that used it, not just a
 // bool. An intent can never succeed again once its own Expiry has passed
 // (processRfqOpen already rejects expired intents independently), so once
 // that time is reached the entry is safe to prune — this is what bounds the
-// map's growth (code-review finding: it was unbounded before).
+// map's growth.
 type rfqBook struct {
 	mu         sync.Mutex
 	open       map[common.Hash]*rfqState
@@ -101,7 +101,7 @@ func newRfqBook() *rfqBook {
 // pruneExpired evicts open RFQs and used-nonce records whose expiry has
 // passed. Called opportunistically on open/close rather than on a timer —
 // simplest fix that bounds memory growth without adding a background
-// goroutine (code-review finding on both b.open and b.usedNonces). Caller
+// goroutine, for both b.open and b.usedNonces. Caller
 // must hold b.mu.
 func (b *rfqBook) pruneExpired(now uint64) {
 	for id, rfq := range b.open {
@@ -123,13 +123,12 @@ func (b *rfqBook) pruneExpired(now uint64) {
 
 // validateRfqIntent rejects a decoded-but-unchecked RfqIntent before it's
 // hashed or stored. Required: json.Unmarshal leaves *big.Int fields nil when
-// the client omits them, and .Bytes() on a nil *big.Int panics (code-review
-// finding) — reject cleanly here instead of crashing the request goroutine.
+// the client omits them, and .Bytes() on a nil *big.Int panics — reject
+// cleanly here instead of crashing the request goroutine.
 // Negative values are also rejected: big.Int.Bytes() encodes only the
 // magnitude, but the on-chain Fill encodes the same field via two's-complement
 // ABI packing — a negative value would hash differently in Go than what
-// actually gets ABI-encoded on-chain, silently breaking the signature
-// (code-review finding).
+// actually gets ABI-encoded on-chain, silently breaking the signature.
 func validateRfqIntent(i rfqIntent) error {
 	if i.Size == nil || i.LimitPrice == nil || i.RfqNonce == nil {
 		return fmt.Errorf("size, limitPrice, and rfqNonce must all be present")
@@ -261,8 +260,8 @@ func hashFillForSigning(rfqID common.Hash, taker, maker common.Address, s side, 
 
 // recoverSigner recovers the address that produced a 65-byte [r,s,v] signature
 // (v = 27/28) over the given EIP-712 digest. Never trust a client-supplied
-// address field instead of this — the round-2 critical fix this whole file
-// exists to implement correctly.
+// address field instead of this: a client-claimed address proves nothing
+// without a signature that recovers to it.
 func recoverSigner(digest common.Hash, sig []byte) (common.Address, error) {
 	if len(sig) != 65 {
 		return common.Address{}, fmt.Errorf("signature must be 65 bytes, got %d", len(sig))
@@ -336,7 +335,7 @@ func (e *Extension) processRfqOpen(action teetypes.Action, df *instruction.DataF
 }
 
 // openRfq validates the nonce hasn't been used, computes the deterministic
-// rfqId (round-3 fix: keccak256(taker, nonce, verifyingContract), not random —
+// rfqId (keccak256(taker, nonce, verifyingContract), not random —
 // so the on-chain settled[] guard still catches a replay after an in-memory
 // restart), and stores the RFQ.
 func (b *rfqBook) openRfq(eip712 eip712Config, intent rfqIntent) (common.Hash, error) {
@@ -472,7 +471,7 @@ func (e *Extension) processRfqClose(action teetypes.Action, df *instruction.Data
 	// Fast, local, no-network check before committing to "matched" — catches an
 	// obviously broken deployment (missing env vars) synchronously, so a
 	// misconfiguration doesn't silently report matched:true with no way for the
-	// caller to ever learn submission never had a chance (code-review finding).
+	// caller to ever learn submission never had a chance.
 	if err := checkSettlerConfigured(); err != nil {
 		return buildResult(action, df, nil, 0, fmt.Errorf("cannot submit settlement: %w", err))
 	}
@@ -488,7 +487,7 @@ func (e *Extension) processRfqClose(action teetypes.Action, df *instruction.Data
 	// which is backwards for a system whose whole point is on-chain
 	// verifiability. This handler reports a match; the chain reports settlement.
 	//
-	// Panic recovery is explicit here (code-review finding): net/http's Server
+	// Panic recovery is explicit here: net/http's Server
 	// only recovers panics in the goroutine actually serving the request: a
 	// spawned child goroutine is not covered by that, and an unrecovered panic
 	// in submitSettle would crash the whole extension process, not just this
@@ -547,7 +546,7 @@ func (b *rfqBook) closeAndSelectWinner(rfqID common.Hash) (rfqState, quoteEntry,
 //  6. No qualifying quote -> no match
 func selectWinner(intent rfqIntent, quotes map[common.Address]quoteEntry, now time.Time) (quoteEntry, bool) {
 	// The RFQ itself can have expired even if some individual quote hasn't
-	// (code-review finding: this was previously only checked per-quote, never
+	// (this was previously only checked per-quote, never
 	// against the taker's own intent — a late CLOSE could still pick a winner
 	// and sign+submit a Fill guaranteed to revert on-chain, burning gas for
 	// nothing since the tx had already been reported as matched).
@@ -609,10 +608,10 @@ func signAttestation(key *dcrsecp256k1.PrivateKey, digest common.Hash) ([]byte, 
 
 // settler caches the chain client, contract binding, and hot key across
 // calls instead of redialing and re-fetching the chain ID on every single
-// RFQ close (code-review finding). sendMu serializes the fetch-nonce-then-send
+// RFQ close. sendMu serializes the fetch-nonce-then-send
 // sequence: bind.NewKeyedTransactorWithChainID pulls a pending nonce from the
 // client internally, and two concurrent Settle calls racing that step could
-// be assigned the same nonce (code-review finding — actionHandler has no
+// be assigned the same nonce (actionHandler has no
 // serialization of its own beyond an assumption documented, not enforced, in
 // extension.go). This mutex is what actually enforces it for this code path.
 type settler struct {

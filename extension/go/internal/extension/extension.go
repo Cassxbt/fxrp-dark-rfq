@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"sync"
 
-	"sign-extension/internal/config"
-	"sign-extension/pkg/types"
+	"fxrp-dark-rfq-extension/internal/config"
+	"fxrp-dark-rfq-extension/pkg/types"
 
 	"github.com/flare-foundation/go-flare-common/pkg/tee/instruction"
 	teetypes "github.com/flare-foundation/tee-node/pkg/types"
@@ -18,7 +18,7 @@ import (
 	secp256k1 "github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
-// Extension holds mutable state for the sign extension. Access is serialized
+// Extension holds mutable state for the RFQ extension. Access is serialized
 // by the mutex; the framework dispatches actions serially anyway, but the
 // state read in stateHandler is concurrent with action processing.
 type Extension struct {
@@ -88,8 +88,8 @@ func (e *Extension) processAction(action teetypes.Action) (int, []byte) {
 			return http.StatusBadRequest, []byte(fmt.Sprintf("decoding direct instruction: %v", err))
 		}
 
-		// SECURITY: only RFQ is allowed via the Direct path. Code-review finding —
-		// before the message-shape fix above, KEY/UPDATE sent via /direct always
+		// SECURITY: only RFQ is allowed via the Direct path. Before the
+		// message-shape fix above, KEY/UPDATE sent via /direct always
 		// failed with an empty OriginalMessage, which accidentally protected the
 		// attested-signer key from being overwritten by anyone who could reach the
 		// tunnel. Fixing the parsing bug removed that accidental protection: without

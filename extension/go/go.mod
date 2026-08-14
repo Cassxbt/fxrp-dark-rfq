@@ -1,4 +1,4 @@
-module sign-extension
+module fxrp-dark-rfq-extension
 
 go 1.25.1
 

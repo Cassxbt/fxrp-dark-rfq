@@ -1,4 +1,4 @@
-module sign-extension/tools
+module fxrp-dark-rfq-extension/tools
 
 go 1.25.1
 
@@ -9,7 +9,7 @@ require (
 	github.com/flare-foundation/tee-proxy v0.0.18
 	github.com/joho/godotenv v1.5.1
 	github.com/pkg/errors v0.9.1
-	sign-extension v0.0.0
+	fxrp-dark-rfq-extension v0.0.0
 )
 
 require (
@@ -91,7 +91,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
 
-// sign-extension is the extension module in this same repo (one level up).
+// fxrp-dark-rfq-extension is the extension module in this same repo (one level up).
 // tee-node and tee-proxy are fetched from the network (verified against go.sum)
 // — no on-disk sibling clones required.
-replace sign-extension => ../
+replace fxrp-dark-rfq-extension => ../

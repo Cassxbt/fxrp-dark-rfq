@@ -16,7 +16,7 @@ export function ConnectWallet() {
       // connection or any other failure is actually catchable — the
       // previous version called connect() with no handling at all, so a
       // rejection in the injected provider produced no feedback whatsoever,
-      // unlike every other action in this app (code-review finding).
+      // unlike every other action in this app.
       await connectAsync({ connector: connectors[0] });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

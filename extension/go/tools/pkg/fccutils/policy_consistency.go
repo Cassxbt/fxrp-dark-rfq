@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/flare-foundation/go-flare-common/pkg/logger"
 
-	"sign-extension/tools/pkg/support"
+	"fxrp-dark-rfq-extension/tools/pkg/support"
 )
 
 // ErrPolicyOutOfSync indicates the FTDC proxy's latest signing policy does not

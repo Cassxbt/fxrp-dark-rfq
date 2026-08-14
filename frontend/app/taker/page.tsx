@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAccount, useSignTypedData, useWriteContract, useWatchContractEvent, useConfig } from "wagmi";
-import { readContract } from "wagmi/actions";
+import { readContract, getPublicClient } from "wagmi/actions";
 import { parseUnits } from "viem";
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { EIP712_DOMAIN, RFQ_INTENT_TYPES, SIDE_TAKER_BUY, SIDE_TAKER_SELL } from "@/lib/eip712";
@@ -118,6 +118,27 @@ export default function TakerPage() {
     }
   }
 
+  // The event watcher only fires for logs that arrive while it's subscribed.
+  // Once settled() is true the fill is a fact on-chain, so read the Filled
+  // event back directly instead of leaving the confirmation card dependent on
+  // the watcher having been listening at the right moment.
+  async function loadFilled(id: `0x${string}`) {
+    const client = getPublicClient(wagmiConfig);
+    if (!client) return;
+    // Coston2's public RPC caps eth_getLogs at 30 blocks per request.
+    const latest = await client.getBlockNumber();
+    const logs = await client.getContractEvents({
+      address: RFQ_SETTLEMENT_ADDRESS,
+      abi: RFQ_SETTLEMENT_ABI,
+      eventName: "Filled",
+      args: { rfqId: id },
+      fromBlock: latest - 25n,
+      toBlock: "latest",
+    });
+    const last = logs[logs.length - 1];
+    if (last) setFilled(last.args as FilledArgs);
+  }
+
   async function closeRfq() {
     if (!rfqId) return;
     setStatus("Closing RFQ...");
@@ -136,12 +157,8 @@ export default function TakerPage() {
       }
 
       // Settlement is submitted asynchronously (the FCC framework's 2s
-      // response timeout doesn't fit a chain round trip — see docs/TRUST.md).
-      // The Filled event watcher above will catch a success; this poll fills
-      // the other half — if it *fails* (e.g. allowance was pulled, price
-      // moved past the FTSO bound), there was previously no feedback at all
-      // and the UI would just sit there looking broken. Polls settled()
-      // directly rather than trusting any response as proof of settlement.
+      // response timeout doesn't fit a chain round trip — see docs/TRUST.md),
+      // so poll settled() rather than trusting the CLOSE response as proof.
       setStatus("Closed — waiting for on-chain settlement (up to ~30s)...");
       for (let i = 0; i < 15; i++) {
         await new Promise((r) => setTimeout(r, 2000));
@@ -152,12 +169,13 @@ export default function TakerPage() {
           args: [rfqId],
         });
         if (isSettled) {
-          setStatus("Settled on-chain — see the Filled details below once the event watcher catches up.");
+          setStatus("Settled on-chain.");
+          await loadFilled(rfqId);
           return;
         }
       }
       setStatus(
-        "No Filled after ~30s — settlement likely reverted (check allowance, FTSO bound, or attested-signer whitelist). Not a UI bug: the chain itself never recorded a fill.",
+        "No Filled after ~30s — settlement likely reverted (check allowance, balance, or the attested-signer whitelist). Not a UI bug: the chain itself never recorded a fill.",
       );
     } catch (err) {
       setCloseResult(`Error: ${err instanceof Error ? err.message : String(err)}`);
