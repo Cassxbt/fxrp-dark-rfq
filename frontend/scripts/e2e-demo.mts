@@ -15,7 +15,7 @@ import {
   ERC20_ABI,
   RFQ_SETTLEMENT_ABI,
 } from "../lib/contracts";
-import { EIP712_DOMAIN, RFQ_INTENT_TYPES, QUOTE_TYPES, SIDE_TAKER_BUY } from "../lib/eip712";
+import { EIP712_DOMAIN, RFQ_INTENT_TYPES, QUOTE_TYPES, SIDE_TAKER_BUY, SIDE_TAKER_SELL } from "../lib/eip712";
 import { sendRfqDirect } from "../lib/rfqClient";
 import { hexToBytes } from "../lib/ecies";
 import { quoteAmount } from "../lib/quoteAmount";
@@ -82,18 +82,25 @@ async function checkBalances() {
 async function main() {
   await checkBalances();
 
+  // SIDE=sell exercises the other half of the matcher (taker sells FXRP,
+  // highest qualifying quote wins) and rebalances wallets that have drifted
+  // one way after repeated same-side runs.
+  const sell = process.env.SIDE === "sell";
   const size = "1";
-  const limitPrice = "3.00";
+  const limitPrice = sell ? "2.50" : "3.00";
   const sizeUnits = parseUnits(size, FXRP_DECIMALS);
   const limitPriceWad = parseUnits(limitPrice, 18);
   const expiry = BigInt(Math.floor(Date.now() / 1000) + 900);
   const rfqNonce = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
 
-  // Taker is buying -> approve USDT0 at the worst-case (limit-price) amount.
-  const approveAmount = quoteAmount(sizeUnits, limitPriceWad, FXRP_DECIMALS, USDT0_DECIMALS);
-  log("Taker: approving USDT0", { approveAmount: approveAmount.toString() });
+  // Buy: approve USDT0 at the worst case (the taker's own limit).
+  // Sell: approve the exact FXRP being sold.
+  const approveAmount = sell
+    ? sizeUnits
+    : quoteAmount(sizeUnits, limitPriceWad, FXRP_DECIMALS, USDT0_DECIMALS);
+  log(`Taker: approving ${sell ? "FXRP" : "USDT0"}`, { approveAmount: approveAmount.toString() });
   const approveTakerTx = await takerWallet.writeContract({
-    address: USDT0_ADDRESS,
+    address: sell ? FXRP_ADDRESS : USDT0_ADDRESS,
     abi: ERC20_ABI,
     functionName: "approve",
     args: [RFQ_SETTLEMENT_ADDRESS, approveAmount],
@@ -102,14 +109,14 @@ async function main() {
   log("Taker: approve confirmed", { tx: approveTakerTx });
 
   const intent = {
-    side: SIDE_TAKER_BUY,
+    side: sell ? SIDE_TAKER_SELL : SIDE_TAKER_BUY,
     size: sizeUnits,
     limitPrice: limitPriceWad,
     taker: takerAccount.address,
     expiry,
     rfqNonce,
   };
-  log("Taker: signing RfqIntent (buy 1 FXRP @ limit 3.00 USDT0)");
+  log(`Taker: signing RfqIntent (${sell ? "sell" : "buy"} ${size} FXRP @ limit ${limitPrice} USDT0)`);
   const takerSig = await takerWallet.signTypedData({
     domain: EIP712_DOMAIN,
     types: RFQ_INTENT_TYPES,
@@ -126,22 +133,26 @@ async function main() {
 
   // Two makers, two different prices, so the winner is actually a selection
   // decision made inside the TEE, not the only option on the table.
+  // On a sell the taker wants the HIGHEST price, so the winner flips.
   const makerQuotes: { wallet: typeof maker1Wallet; account: typeof maker1Account; price: string }[] = [
-    { wallet: maker1Wallet, account: maker1Account, price: "2.95" },
-    { wallet: maker2Wallet, account: maker2Account, price: "2.99" },
+    { wallet: maker1Wallet, account: maker1Account, price: sell ? "2.55" : "2.95" },
+    { wallet: maker2Wallet, account: maker2Account, price: sell ? "2.60" : "2.99" },
   ];
 
   for (const [i, { wallet, account, price }] of makerQuotes.entries()) {
     const priceWad = parseUnits(price, 18);
     const quoteExpiry = BigInt(Math.floor(Date.now() / 1000) + 300);
 
-    // Taker is buying FXRP -> makers sell FXRP -> approve FXRP.
-    log(`Maker${i + 1} (${account.address}): approving FXRP`);
+    // Buy: makers deliver FXRP. Sell: makers pay USDT0 at their own price.
+    const makerApprove = sell
+      ? quoteAmount(sizeUnits, priceWad, FXRP_DECIMALS, USDT0_DECIMALS)
+      : sizeUnits;
+    log(`Maker${i + 1} (${account.address}): approving ${sell ? "USDT0" : "FXRP"}`);
     const approveTx = await wallet.writeContract({
-      address: FXRP_ADDRESS,
+      address: sell ? USDT0_ADDRESS : FXRP_ADDRESS,
       abi: ERC20_ABI,
       functionName: "approve",
-      args: [RFQ_SETTLEMENT_ADDRESS, sizeUnits],
+      args: [RFQ_SETTLEMENT_ADDRESS, makerApprove],
     });
     await publicClient.waitForTransactionReceipt({ hash: approveTx });
 
@@ -160,7 +171,9 @@ async function main() {
     log(`Maker${i + 1}: QUOTE accepted`);
   }
 
-  log("Taker: sending CLOSE to the TEE (expect maker1 @ 2.95 to win — lowest price wins on a buy)");
+  const expectedWinner = sell ? maker2Account : maker1Account;
+  const expectedPrice = sell ? "2.60" : "2.95";
+  log(`Taker: sending CLOSE (expect ${sell ? "maker2 @ 2.60 — highest wins on a sell" : "maker1 @ 2.95 — lowest wins on a buy"})`);
   const closeResult = await sendRfqDirect("CLOSE", hexToBytes(rfqId));
   if (closeResult.status !== 1) throw new Error(`CLOSE failed: ${closeResult.log}`);
   const closed = JSON.parse(new TextDecoder().decode(hexToBytes(closeResult.data)));
@@ -204,8 +217,10 @@ async function main() {
     `Explorer: https://coston2-explorer.flare.network/tx/${fill.transactionHash}`,
   );
 
-  const winnerIsMaker1 = (fill.args as { maker?: string }).maker?.toLowerCase() === maker1Account.address.toLowerCase();
-  log(winnerIsMaker1 ? "PASS: best-priced maker (maker1 @ 2.95) won, as expected" : "NOTE: winner was not the expected best-priced maker — check selection logic");
+  const winnerOk = (fill.args as { maker?: string }).maker?.toLowerCase() === expectedWinner.address.toLowerCase();
+  log(winnerOk
+    ? `PASS: best-priced maker won at ${expectedPrice}, as expected`
+    : "NOTE: winner was not the expected best-priced maker — check selection logic");
 
   await checkBalances();
   log("E2E DEMO COMPLETE");

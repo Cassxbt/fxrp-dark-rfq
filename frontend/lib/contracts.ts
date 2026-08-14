@@ -5,10 +5,14 @@ export const RFQ_SETTLEMENT_ADDRESS = "0xaBf47C48c00DDa806f1d9243c936A8153C7E6Fc
 export const FXRP_ADDRESS = "0x0b6A3645c240605887a5532109323A3E12273dc7" as const;
 export const USDT0_ADDRESS = "0xC1A5B41512496B80903D1f32d6dEa3a73212E71F" as const;
 
-// Proxy URL for the FCC extension — an ngrok tunnel, not a permanent domain.
-// Configurable so a redeployed tunnel doesn't require a code change.
-export const EXT_PROXY_URL =
-  process.env.NEXT_PUBLIC_EXT_PROXY_URL ?? "https://2971-102-89-68-144.ngrok-free.app";
+// Browser traffic goes through our own server route, never straight at the
+// tunnel — the extension's proxy sends no CORS headers and ngrok's free tier
+// serves an interstitial to browser User-Agents, so a direct call fails in a
+// real browser even from localhost. See app/api/ext/[...path]/route.ts.
+//
+// Node scripts (scripts/e2e-demo.mts) have neither problem and set
+// NEXT_PUBLIC_EXT_PROXY_URL to the tunnel directly, skipping the hop.
+export const EXT_PROXY_URL = process.env.NEXT_PUBLIC_EXT_PROXY_URL ?? "/api/ext";
 
 export const ERC20_ABI = [
   {
