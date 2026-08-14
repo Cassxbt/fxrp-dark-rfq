@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Tag, Medallion } from "@/components/ui";
 import { ExtStatus } from "@/components/ExtStatus";
+import { Reveal } from "@/components/motion";
 import {
   RFQ_SETTLEMENT_ADDRESS,
   FXRP_ADDRESS,
@@ -34,6 +35,7 @@ function Section({
 }) {
   return (
     <section id={id} className="border-b border-line py-16">
+      <Reveal>
       <p className="eyebrow-ruled font-mono text-[11px] uppercase tracking-[0.22em] text-accent">
         {eyebrow}
       </p>
@@ -43,7 +45,10 @@ function Section({
           {lede}
         </p>
       )}
-      {children && <div className="mt-9">{children}</div>}
+      </Reveal>
+      {children && (
+        <Reveal className="mt-9">{children}</Reveal>
+      )}
     </section>
   );
 }
@@ -82,7 +87,7 @@ export default function Home() {
 
         {/* Hero */}
         <section className="grid gap-10 border-b border-line py-16 md:grid-cols-[1.35fr_1fr] md:gap-14 md:py-20">
-          <div>
+          <Reveal>
             <p className="eyebrow-ruled mb-6 font-mono text-[11px] uppercase tracking-[0.28em] text-accent">
               Sealed-bid OTC
             </p>
@@ -113,9 +118,10 @@ export default function Home() {
                 Quote as a maker
               </Link>
             </div>
-          </div>
+          </Reveal>
 
-          <aside className="self-start overflow-hidden rounded-[10px] border border-line bg-panel">
+          <Reveal delay={140} className="self-start">
+          <aside className="overflow-hidden rounded-[10px] border border-line bg-panel">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted">
                 Settled fills · FXRP/USDT0
@@ -154,6 +160,7 @@ export default function Home() {
               Lowest qualifying quote wins a buy, highest wins a sell. Both settled on Coston2.
             </p>
           </aside>
+          </Reveal>
         </section>
 
         {/* Problem */}

@@ -8,8 +8,6 @@ Sealed-bid RFQ matcher for FXRP that matches privately inside a Flare Confidenti
 [![Network](https://img.shields.io/badge/Network-Coston2-e84142?style=flat-square)](https://coston2-explorer.flare.network)
 [![tests](https://img.shields.io/github/actions/workflow/status/Cassxbt/fxrp-dark-rfq/test.yml?style=flat-square&label=tests)](https://github.com/Cassxbt/fxrp-dark-rfq/actions/workflows/test.yml)
 
-Built for [Flare Summer Signal](https://dorahacks.io/hackathon/flaresummersignal/detail) — Bounty 2 (Confidential Compute) primary, Bounty 1 (Interoperable Assets / FXRP) as integration proof.
-
 ## Demo
 
 Both directions, settled on Coston2 and independently checkable — not mocks:
@@ -25,6 +23,8 @@ through whatever single quote arrived. Both ERC-20 legs move atomically in one
 transaction.
 
 Produced by [`frontend/scripts/e2e-demo.mts`](frontend/scripts/e2e-demo.mts), which drives the same `lib/eip712.ts`, `lib/rfqClient.ts`, and `lib/quoteAmount.ts` the UI itself calls.
+
+Submitted to [Flare Summer Signal](https://dorahacks.io/hackathon/flaresummersignal/detail): Bounty 2 (Confidential Compute) primary, Bounty 1 (Interoperable Assets / FXRP) as integration proof.
 
 ## Overview
 
