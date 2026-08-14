@@ -14,8 +14,8 @@ Both directions, settled on Coston2 and independently checkable — not mocks:
 
 | Side | Size | Quotes seen | Filled at | Transaction |
 |---|---|---|---|---|
-| Taker **buy** | 1 FXRP | 2.95 · 2.99 | **2.95** (lowest wins) | [`0xe158ffe7…`](https://coston2-explorer.flare.network/tx/0xe158ffe70bd1df2790ca3bc09c501cf214f6c7a7406872882361698551a7a8e9) |
-| Taker **sell** | 1 FXRP | 2.55 · 2.60 | **2.60** (highest wins) | [`0x92d60cc4…`](https://coston2-explorer.flare.network/tx/0x92d60cc432e423fc6f37cd3de95ab3f7620efdf4f64f2bbe17a13652c1cbed01) |
+| Taker **buy** | 1 FXRP | 2.95 · 2.99 | **2.95** (lowest wins) | [`0xbfd03bf8…`](https://coston2-explorer.flare.network/tx/0xbfd03bf8f8a35407677fce4ad577f93d179c5aa840e0659a010ca3be550c19bd) |
+| Taker **sell** | 1 FXRP | 2.55 · 2.60 | **2.60** (highest wins) | [`0x0c23ec81…`](https://coston2-explorer.flare.network/tx/0x0c23ec8109c941813da12f8348f4c8a29809bd2c58812393ffea6692e5e32f92) |
 
 Two makers competed on each, and the winner flips with the side — which is the
 point: the enclave ranks against the taker's sealed limit rather than passing
@@ -121,7 +121,7 @@ what produced the transaction linked under Demo above.
 | FXRP | Coston2 | [`0x0b6A3645c240605887a5532109323A3E12273dc7`](https://coston2-explorer.flare.network/address/0x0b6A3645c240605887a5532109323A3E12273dc7) |
 | USDT0 | Coston2 | [`0xC1A5B41512496B80903D1f32d6dEa3a73212E71F`](https://coston2-explorer.flare.network/address/0xC1A5B41512496B80903D1f32d6dEa3a73212E71F) |
 
-Proof-of-fill transactions: [buy `0xe158ffe7…`](https://coston2-explorer.flare.network/tx/0xe158ffe70bd1df2790ca3bc09c501cf214f6c7a7406872882361698551a7a8e9) · [sell `0x92d60cc4…`](https://coston2-explorer.flare.network/tx/0x92d60cc432e423fc6f37cd3de95ab3f7620efdf4f64f2bbe17a13652c1cbed01).
+Proof-of-fill transactions: [buy `0xbfd03bf8…`](https://coston2-explorer.flare.network/tx/0xbfd03bf8f8a35407677fce4ad577f93d179c5aa840e0659a010ca3be550c19bd) · [sell `0x0c23ec81…`](https://coston2-explorer.flare.network/tx/0x0c23ec8109c941813da12f8348f4c8a29809bd2c58812393ffea6692e5e32f92).
 
 ## Known limitations
 

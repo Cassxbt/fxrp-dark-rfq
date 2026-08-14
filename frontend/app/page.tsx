@@ -8,8 +8,8 @@ import {
   USDT0_ADDRESS,
 } from "@/lib/contracts";
 
-const FILL_TX = "0xe158ffe70bd1df2790ca3bc09c501cf214f6c7a7406872882361698551a7a8e9";
-const FILL_TX_SELL = "0x92d60cc432e423fc6f37cd3de95ab3f7620efdf4f64f2bbe17a13652c1cbed01";
+const FILL_TX = "0xbfd03bf8f8a35407677fce4ad577f93d179c5aa840e0659a010ca3be550c19bd";
+const FILL_TX_SELL = "0x0c23ec8109c941813da12f8348f4c8a29809bd2c58812393ffea6692e5e32f92";
 
 // Both directions, settled on-chain. Two receipts rather than one: a single
 // fill reads as a one-off, and the pair shows the winner flips with the side.
