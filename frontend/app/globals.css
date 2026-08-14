@@ -1,26 +1,65 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* Dark by intent, not by default: this is a dark pool — the product's whole
+   premise is that order flow stays hidden until it settles. Amber accent
+   (terminal heritage) keeps green/red free to mean only one thing each:
+   buy/sell direction, and settled/failed. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-base: #0a0c0d;
+  --color-panel: #101314;
+  --color-raised: #171b1d;
+  --color-line: #232a2c;
+  --color-line-strong: #313b3e;
+  --color-ink: #e9edec;
+  --color-muted: #8b9698;
+  --color-faint: #596467;
+  --color-accent: #e8a33d;
+  --color-accent-dim: #6b4d1c;
+  --color-positive: #3fb950;
+  --color-negative: #f0603f;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--color-base);
+  color: var(--color-ink);
+  /* Geist is loaded in layout.tsx — the create-next-app default overrode it
+     with Arial here, which is why everything rendered as Helvetica. */
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Numbers must not shift width as they update. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Faint grid, fixed behind content — reads as a workspace surface rather than
+   an empty page. Cheap: two repeating gradients, no image, no layout cost. */
+.grid-surface {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
+
+input[type="text"],
+input:not([type]) {
+  font-variant-numeric: tabular-nums;
+}
+
+input::placeholder {
+  color: var(--color-faint);
+}
+
+*:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: #0a0c0d;
 }

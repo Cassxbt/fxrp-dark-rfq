@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAccount, useSignTypedData, useWriteContract } from "wagmi";
 import { parseUnits } from "viem";
-import { ConnectWallet } from "@/components/ConnectWallet";
+import { TopBar, Panel, Field, Btn, SideToggle } from "@/components/ui";
 import { EIP712_DOMAIN, QUOTE_TYPES } from "@/lib/eip712";
 import { RFQ_SETTLEMENT_ADDRESS, FXRP_ADDRESS, USDT0_ADDRESS, ERC20_ABI } from "@/lib/contracts";
 import { sendRfqDirect } from "@/lib/rfqClient";
@@ -25,6 +25,7 @@ export default function MakerPage() {
   const [rfqSize, setRfqSize] = useState("1");
   const [price, setPrice] = useState("2.00");
   const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function submitQuote() {
     if (!address) return;
@@ -32,6 +33,7 @@ export default function MakerPage() {
       setStatus("RFQ ID must be a 0x-prefixed 32-byte hash");
       return;
     }
+    setBusy(true);
     setStatus("Preparing...");
 
     try {
@@ -91,55 +93,111 @@ export default function MakerPage() {
       setStatus("Quote submitted. If you win, the taker's CLOSE triggers settlement — watch your wallet balance or the contract's Filled event to confirm.");
     } catch (err) {
       setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBusy(false);
     }
   }
 
-  return (
-    <main className="mx-auto w-full max-w-xl p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Maker — quote on an RFQ</h1>
-        <ConnectWallet />
-      </div>
+  const submitted = status.startsWith("Quote submitted");
+  const failed = status.startsWith("Failed") || status.startsWith("Error") || status.startsWith("RFQ ID must");
 
-      {!isConnected ? (
-        <p className="text-neutral-500">Connect a wallet on Coston2 to continue.</p>
-      ) : (
-        <div className="space-y-3">
-          <label className="block text-sm">
-            RFQ ID (from the taker)
-            <input
-              className="mt-1 w-full rounded border px-3 py-2 font-mono text-xs"
-              value={rfqId}
-              onChange={(e) => setRfqId(e.target.value)}
-              placeholder="0x..."
-            />
-          </label>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="radio" checked={rfqSide === "buy"} onChange={() => setRfqSide("buy")} /> Taker is buying
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="radio" checked={rfqSide === "sell"} onChange={() => setRfqSide("sell")} /> Taker is selling
-            </label>
-          </div>
-          <label className="block text-sm">
-            Size (FXRP, told to you by the taker)
-            <input
-              className="mt-1 w-full rounded border px-3 py-2"
-              value={rfqSize}
-              onChange={(e) => setRfqSize(e.target.value)}
-            />
-          </label>
-          <label className="block text-sm">
-            Your quoted price (USDT0 per FXRP)
-            <input className="mt-1 w-full rounded border px-3 py-2" value={price} onChange={(e) => setPrice(e.target.value)} />
-          </label>
-          <button onClick={submitQuote} className="rounded bg-black px-4 py-2 text-white hover:bg-neutral-800">
-            Submit Quote
-          </button>
-          {status && <p className="break-all text-sm text-neutral-700">{status}</p>}
+  return (
+    <div className="grid-surface min-h-screen">
+      <TopBar active="maker" />
+
+      <main className="mx-auto w-full max-w-5xl px-5 py-8">
+        <div className="mb-7">
+          <h1 className="text-[19px] font-semibold tracking-tight text-ink">Quote an RFQ</h1>
+          <p className="mt-1 text-[12.5px] text-faint">
+            You are pricing blind: the taker&apos;s limit and every competing quote stay inside the enclave.
+          </p>
         </div>
-      )}
-    </main>
+
+        {!isConnected ? (
+          <Panel className="px-5 py-14 text-center">
+            <p className="text-[13px] text-muted">Connect a wallet on Coston2 to submit a quote.</p>
+          </Panel>
+        ) : (
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start">
+            <Panel title="Quote ticket">
+              <div className="space-y-4 p-4">
+                <Field
+                  label="RFQ ID"
+                  value={rfqId}
+                  onChange={setRfqId}
+                  placeholder="0x…"
+                  hint={<span className="text-[10px] text-faint">from the taker</span>}
+                />
+
+                <div>
+                  <span className="mb-1.5 block text-[11px] uppercase tracking-[0.13em] text-muted">
+                    Taker direction
+                  </span>
+                  <SideToggle
+                    value={rfqSide}
+                    onChange={setRfqSide}
+                    labels={{ buy: "Taker buys", sell: "Taker sells" }}
+                  />
+                </div>
+
+                <Field label="Size" value={rfqSize} onChange={setRfqSize} suffix="FXRP" />
+                <Field label="Your price" value={price} onChange={setPrice} suffix="USDT0" />
+
+                <p className="border-l border-accent-dim pl-3 text-[11.5px] leading-relaxed text-faint">
+                  {rfqSide === "buy"
+                    ? `You sell ${rfqSize || "0"} FXRP if you win. Lowest qualifying price wins.`
+                    : `You pay USDT0 for ${rfqSize || "0"} FXRP if you win. Highest qualifying price wins.`}
+                </p>
+
+                <Btn onClick={submitQuote} disabled={busy} className="w-full">
+                  {busy ? "Working…" : "Approve & submit quote"}
+                </Btn>
+              </div>
+            </Panel>
+
+            <div className="space-y-5">
+              <Panel title="Status">
+                {!status ? (
+                  <p className="px-4 py-9 text-center text-[12.5px] text-faint">
+                    No quote submitted yet.
+                  </p>
+                ) : (
+                  <div className="flex items-start gap-3 p-4">
+                    <span
+                      className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
+                        failed ? "bg-negative" : submitted ? "bg-positive" : "bg-accent"
+                      }`}
+                    />
+                    <p
+                      className={`text-[12.5px] leading-relaxed ${
+                        failed ? "text-negative" : submitted ? "text-ink" : "text-muted"
+                      }`}
+                    >
+                      {status}
+                    </p>
+                  </div>
+                )}
+              </Panel>
+
+              <Panel title="What the enclave does with this">
+                <ol className="divide-y divide-line px-4 text-[12.5px] text-faint">
+                  {[
+                    "Recovers your address from the signature — a quote can't be filed under someone else's name.",
+                    "Holds it sealed. The taker never sees your price unless you win.",
+                    "On close, ranks every quote against the taker's hidden limit and picks the best.",
+                    "Signs the winning fill and settles it on-chain in one transaction.",
+                  ].map((t, i) => (
+                    <li key={i} className="flex gap-3 py-2.5">
+                      <span className="font-mono text-[11px] text-accent">{`0${i + 1}`}</span>
+                      <span className="leading-relaxed">{t}</span>
+                    </li>
+                  ))}
+                </ol>
+              </Panel>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
   );
 }

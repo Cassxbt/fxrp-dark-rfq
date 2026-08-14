@@ -25,11 +25,14 @@ export function ConnectWallet() {
 
   if (isConnected && address) {
     return (
-      <div className="flex items-center gap-3 text-sm">
-        <span className="font-mono text-neutral-600">
-          {address.slice(0, 6)}...{address.slice(-4)}
+      <div className="flex items-center gap-2.5 text-[12px]">
+        <span className="font-mono text-muted">
+          {address.slice(0, 6)}…{address.slice(-4)}
         </span>
-        <button onClick={() => disconnect()} className="text-neutral-500 underline hover:text-neutral-800">
+        <button
+          onClick={() => disconnect()}
+          className="text-faint transition-colors duration-150 hover:text-negative"
+        >
           disconnect
         </button>
       </div>
@@ -37,15 +40,19 @@ export function ConnectWallet() {
   }
 
   return (
-    <div className="text-right">
+    <div className="relative">
       <button
         onClick={handleConnect}
         disabled={isPending}
-        className="rounded bg-black px-4 py-2 text-sm text-white hover:bg-neutral-800 disabled:opacity-50"
+        className="border border-line-strong px-3 py-1.5 text-[12px] font-medium text-ink transition-colors duration-150 hover:border-accent hover:text-accent disabled:opacity-50"
       >
-        {isPending ? "Connecting..." : "Connect Wallet"}
+        {isPending ? "Connecting…" : "Connect wallet"}
       </button>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && (
+        <p className="absolute right-0 top-full mt-1.5 w-56 text-right text-[11px] leading-snug text-negative">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

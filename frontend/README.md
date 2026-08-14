@@ -28,4 +28,4 @@ changes.
 ## Known MVP limitations (disclosed, not bugs)
 
 - No public RFQ listing — a maker learns an open RFQ's ID, side, and size directly from the taker, not from the app.
-- `CLOSE` reports a match synchronously but settlement is submitted asynchronously (the FCC framework has a hardcoded 2-second response timeout that a chain round-trip can't fit in). Confirm settlement via the `RfqSettlement` contract's `Filled` event, not the close response — the taker page does this via `useWatchContractEvent`.
+- `CLOSE` reports a match synchronously but settlement is submitted asynchronously (the FCC framework has a hardcoded 2-second response timeout that a chain round-trip can't fit in). Confirm settlement via the chain, not the close response — the taker page polls `settled()` and then reads the `Filled` event back with `getContractEvents`. `useWatchContractEvent` is the fast path on top of that, not the source of truth: it only fires for logs arriving while it happens to be subscribed.

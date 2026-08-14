@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useAccount, useSignTypedData, useWriteContract, useWatchContractEvent, useConfig } from "wagmi";
 import { readContract, getPublicClient } from "wagmi/actions";
-import { parseUnits } from "viem";
-import { ConnectWallet } from "@/components/ConnectWallet";
+import { parseUnits, formatUnits } from "viem";
+import { TopBar, Panel, Field, Btn, SideToggle, Row } from "@/components/ui";
 import { EIP712_DOMAIN, RFQ_INTENT_TYPES, SIDE_TAKER_BUY, SIDE_TAKER_SELL } from "@/lib/eip712";
 import { RFQ_SETTLEMENT_ADDRESS, FXRP_ADDRESS, USDT0_ADDRESS, ERC20_ABI, RFQ_SETTLEMENT_ABI } from "@/lib/contracts";
 import { sendRfqDirect } from "@/lib/rfqClient";
@@ -28,6 +28,8 @@ export default function TakerPage() {
   const [size, setSize] = useState("1");
   const [limitPrice, setLimitPrice] = useState("3.00");
   const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [rfqId, setRfqId] = useState<`0x${string}` | null>(null);
   const [closeResult, setCloseResult] = useState<string | null>(null);
   const [filled, setFilled] = useState<FilledArgs | null>(null);
@@ -48,6 +50,7 @@ export default function TakerPage() {
 
   async function openRfq() {
     if (!address) return;
+    setBusy(true);
     setStatus("Preparing...");
     setRfqId(null);
     setFilled(null);
@@ -115,6 +118,8 @@ export default function TakerPage() {
       setStatus("RFQ opened.");
     } catch (err) {
       setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -141,6 +146,7 @@ export default function TakerPage() {
 
   async function closeRfq() {
     if (!rfqId) return;
+    setBusy(true);
     setStatus("Closing RFQ...");
     try {
       const result = await sendRfqDirect("CLOSE", hexToBytes(rfqId));
@@ -179,79 +185,158 @@ export default function TakerPage() {
       );
     } catch (err) {
       setCloseResult(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBusy(false);
     }
   }
 
+  const shareLine = openedRfq
+    ? `RFQ ${rfqId} — taker is ${openedRfq.side === "buy" ? "BUYING" : "SELLING"} ${openedRfq.size} FXRP`
+    : "";
+
+  const stage = filled ? 3 : rfqId ? 2 : 1;
+
   return (
-    <main className="mx-auto w-full max-w-xl p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Taker — open an RFQ</h1>
-        <ConnectWallet />
-      </div>
+    <div className="grid-surface min-h-screen">
+      <TopBar active="taker" />
 
-      {!isConnected ? (
-        <p className="text-neutral-500">Connect a wallet on Coston2 to continue.</p>
-      ) : (
-        <>
-          <div className="space-y-3">
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 text-sm">
-                <input type="radio" checked={side === "buy"} onChange={() => setSide("buy")} /> Buy FXRP
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="radio" checked={side === "sell"} onChange={() => setSide("sell")} /> Sell FXRP
-              </label>
-            </div>
-            <label className="block text-sm">
-              Size (FXRP)
-              <input
-                className="mt-1 w-full rounded border px-3 py-2"
-                value={size}
-                onChange={(e) => setSize(e.target.value)}
-              />
-            </label>
-            <label className="block text-sm">
-              Limit price (USDT0 per FXRP) — stays inside the TEE, never revealed to makers or on-chain
-              <input
-                className="mt-1 w-full rounded border px-3 py-2"
-                value={limitPrice}
-                onChange={(e) => setLimitPrice(e.target.value)}
-              />
-            </label>
-            <button onClick={openRfq} className="rounded bg-black px-4 py-2 text-white hover:bg-neutral-800">
-              Open RFQ
-            </button>
+      <main className="mx-auto w-full max-w-5xl px-5 py-8">
+        <div className="mb-7 flex items-end justify-between gap-4">
+          <div>
+            <h1 className="text-[19px] font-semibold tracking-tight text-ink">Open an RFQ</h1>
+            <p className="mt-1 text-[12.5px] text-faint">
+              Your limit price is sealed to the enclave. Makers price the trade without seeing it.
+            </p>
           </div>
+          <ol className="hidden items-center gap-2 text-[11px] text-faint sm:flex">
+            {["Intent", "Quotes", "Settled"].map((s, i) => (
+              <li key={s} className="flex items-center gap-2">
+                <span className={i + 1 <= stage ? "text-accent" : ""}>{s}</span>
+                {i < 2 && <span className="text-line-strong">/</span>}
+              </li>
+            ))}
+          </ol>
+        </div>
 
-          {status && <p className="text-sm text-neutral-700 break-all">{status}</p>}
+        {!isConnected ? (
+          <Panel className="px-5 py-14 text-center">
+            <p className="text-[13px] text-muted">Connect a wallet on Coston2 to open an RFQ.</p>
+          </Panel>
+        ) : (
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start">
+            <Panel title="Order ticket">
+              <div className="space-y-4 p-4">
+                <SideToggle value={side} onChange={setSide} labels={{ buy: "Buy FXRP", sell: "Sell FXRP" }} />
 
-          {rfqId && (
-            <div className="space-y-3 rounded border p-4">
-              <div>
-                <p className="text-xs font-medium text-neutral-500">
-                  Share this with makers — there&apos;s no public listing:
+                <Field label="Size" value={size} onChange={setSize} suffix="FXRP" />
+
+                <Field
+                  label="Limit price"
+                  value={limitPrice}
+                  onChange={setLimitPrice}
+                  suffix="USDT0"
+                  hint={
+                    <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-accent">
+                      <svg viewBox="0 0 10 12" className="h-2.5 w-2.5 fill-none stroke-current" strokeWidth="1.3">
+                        <rect x="0.65" y="5" width="8.7" height="6.35" rx="1" />
+                        <path d="M2.6 5V3.1a2.4 2.4 0 0 1 4.8 0V5" />
+                      </svg>
+                      Sealed
+                    </span>
+                  }
+                />
+
+                <p className="border-l border-accent-dim pl-3 text-[11.5px] leading-relaxed text-faint">
+                  {side === "buy"
+                    ? `Approves at most ${limitPrice || "0"} USDT0 per FXRP — never max uint. You fill at the best maker price at or below your limit.`
+                    : `Approves exactly ${size || "0"} FXRP. You fill at the best maker price at or above your limit.`}
                 </p>
-                <p className="mt-1 break-all rounded bg-neutral-50 p-2 font-mono text-xs">
-                  RFQ {rfqId} — {openedRfq?.side === "buy" ? "taker is BUYING" : "taker is SELLING"} {openedRfq?.size} FXRP
-                </p>
+
+                <Btn onClick={openRfq} disabled={busy} className="w-full">
+                  {busy ? "Working…" : "Approve & open RFQ"}
+                </Btn>
               </div>
-              <button onClick={closeRfq} className="rounded border px-4 py-2 text-sm hover:bg-neutral-50">
-                Close RFQ (match against submitted quotes)
-              </button>
-              {closeResult && <p className="break-all text-sm">{closeResult}</p>}
-            </div>
-          )}
+            </Panel>
 
-          {filled && (
-            <div className="rounded border border-green-600 bg-green-50 p-4 text-sm">
-              <p className="font-semibold text-green-800">Filled event confirmed on-chain</p>
-              <pre className="mt-2 overflow-x-auto text-xs">
-                {JSON.stringify(filled, (_k, v) => (typeof v === "bigint" ? v.toString() : v), 2)}
-              </pre>
+            <div className="space-y-5">
+              <Panel
+                title="Lifecycle"
+                aside={
+                  status ? (
+                    <span className="max-w-[22rem] truncate text-[11px] text-muted" title={status}>
+                      {status}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-faint">idle</span>
+                  )
+                }
+              >
+                {!rfqId ? (
+                  <p className="px-4 py-9 text-center text-[12.5px] text-faint">
+                    No open RFQ. Submit the ticket to seal an intent.
+                  </p>
+                ) : (
+                  <div className="p-4">
+                    <p className="mb-2 text-[11px] text-faint">
+                      Send this to your makers — there is no public listing to discover it.
+                    </p>
+                    <div className="flex items-stretch border border-line bg-base">
+                      <code className="min-w-0 flex-1 truncate px-3 py-2.5 font-mono text-[11.5px] text-ink">
+                        {shareLine}
+                      </code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard?.writeText(shareLine);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 1400);
+                        }}
+                        className="shrink-0 border-l border-line px-3 text-[11px] text-muted transition-colors duration-150 hover:text-accent"
+                      >
+                        {copied ? "copied" : "copy"}
+                      </button>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-3">
+                      <Btn onClick={closeRfq} variant="ghost" disabled={busy}>
+                        Close & match
+                      </Btn>
+                      <span className="text-[11px] text-faint">
+                        Matches against every quote received so far.
+                      </span>
+                    </div>
+
+                    {closeResult && (
+                      <pre className="mt-4 overflow-x-auto border border-line bg-base px-3 py-2.5 font-mono text-[11px] leading-relaxed text-muted">
+                        {closeResult}
+                      </pre>
+                    )}
+                  </div>
+                )}
+              </Panel>
+
+              {filled && (
+                <Panel
+                  title="Filled"
+                  className="border-positive/35"
+                  aside={<span className="text-[11px] text-positive">confirmed on-chain</span>}
+                >
+                  <div className="divide-y divide-line px-4">
+                    <Row k="RFQ" v={`${filled.rfqId.slice(0, 14)}…`} />
+                    <Row k="Maker" v={`${filled.maker.slice(0, 10)}…${filled.maker.slice(-6)}`} />
+                    <Row
+                      k="Side"
+                      v={filled.side === 0 ? "taker buy" : "taker sell"}
+                      tone={filled.side === 0 ? "text-positive" : "text-negative"}
+                    />
+                    <Row k="Size" v={`${formatUnits(filled.size, FXRP_DECIMALS)} FXRP`} />
+                    <Row k="Price" v={`${formatUnits(filled.price, 18)} USDT0`} tone="text-accent" />
+                  </div>
+                </Panel>
+              )}
             </div>
-          )}
-        </>
-      )}
-    </main>
+          </div>
+        )}
+      </main>
+    </div>
   );
 }
