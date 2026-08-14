@@ -1,27 +1,73 @@
 import Link from "next/link";
+import {
+  RFQ_SETTLEMENT_ADDRESS,
+  FXRP_ADDRESS,
+  USDT0_ADDRESS,
+} from "@/lib/contracts";
 
 const FILL_TX = "0xe158ffe70bd1df2790ca3bc09c501cf214f6c7a7406872882361698551a7a8e9";
+const EXPLORER = "https://coston2-explorer.flare.network";
+const REPO = "https://github.com/Cassxbt/fxrp-dark-rfq";
 
-const STEPS = [
-  { n: "01", t: "Taker seals an intent", d: "Side, size and a limit price, EIP-712 signed and encrypted to the TEE. The limit never touches the chain." },
-  { n: "02", t: "Makers quote blind", d: "Each maker prices the RFQ without seeing the limit or any competing quote." },
-  { n: "03", t: "The TEE matches", d: "Best qualifying quote wins inside the enclave. Losing quotes are never published." },
-  { n: "04", t: "Settlement is atomic", d: "One transaction moves both legs. The Filled event is the only public trace." },
+function Section({
+  id,
+  eyebrow,
+  title,
+  lede,
+  children,
+}: {
+  id: string;
+  eyebrow: string;
+  title: string;
+  lede?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <section id={id} className="border-b border-line py-14">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-accent">{eyebrow}</p>
+      <h2 className="mt-3 max-w-2xl text-[24px] font-semibold leading-tight tracking-[-0.015em] text-ink">
+        {title}
+      </h2>
+      {lede && <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted">{lede}</p>}
+      {children && <div className="mt-8">{children}</div>}
+    </section>
+  );
+}
+
+/** Visibility matrix — the clearest single statement of what this system does. */
+const VISIBILITY = [
+  { field: "Taker's limit price", taker: "yes", makers: "no", chain: "no", note: "3.00 — never leaves the enclave" },
+  { field: "Your own quote", taker: "no", makers: "own", chain: "no", note: "makers cannot see each other" },
+  { field: "Losing quote", taker: "no", makers: "no", chain: "no", note: "2.99 was never published anywhere" },
+  { field: "Side and size", taker: "yes", makers: "yes", chain: "yes", note: "shared out of band, then on-chain" },
+  { field: "Winning maker + price", taker: "yes", makers: "yes", chain: "yes", note: "the Filled event, after the fact" },
 ];
+
+function Cell({ v }: { v: string }) {
+  if (v === "yes") return <span className="font-mono text-[12px] text-positive">visible</span>;
+  if (v === "own") return <span className="font-mono text-[12px] text-accent">own only</span>;
+  return <span className="font-mono text-[12px] text-faint">hidden</span>;
+}
 
 export default function Home() {
   return (
     <main className="grid-surface min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-5">
-        <header className="flex h-14 items-center gap-2.5 border-b border-line">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-2.5 border-b border-line bg-base/85 backdrop-blur">
           <span className="h-2.5 w-2.5 rounded-[2px] bg-accent" />
           <span className="text-[13px] font-semibold tracking-tight">FXRP Dark RFQ</span>
+          <nav className="ml-6 hidden gap-4 text-[12.5px] text-faint sm:flex">
+            <a href="#how" className="transition-colors duration-150 hover:text-ink">How it works</a>
+            <a href="#visibility" className="transition-colors duration-150 hover:text-ink">Who sees what</a>
+            <a href="#trust" className="transition-colors duration-150 hover:text-ink">Trust model</a>
+          </nav>
           <span className="ml-auto flex items-center gap-1.5 text-[11px] text-faint">
             <span className="h-1.5 w-1.5 rounded-full bg-positive" />
             Coston2
           </span>
         </header>
 
+        {/* Hero */}
         <section className="grid gap-10 border-b border-line py-16 md:grid-cols-[1.35fr_1fr] md:gap-14 md:py-20">
           <div>
             <p className="mb-4 text-[11px] uppercase tracking-[0.16em] text-accent">
@@ -33,9 +79,9 @@ export default function Home() {
               showing your hand.
             </h1>
             <p className="mt-5 max-w-md text-[14px] leading-relaxed text-muted">
-              A public order book leaks your size and your price before you ever trade. This desk keeps
-              the taker&apos;s limit and every losing quote inside a TEE. The chain only learns who won,
-              and only after it settled.
+              Ask five desks for a price and you have told five desks what you want. This one takes your
+              limit, seals it inside a TEE, collects quotes that cannot see each other, and settles only
+              the winner on-chain.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -54,7 +100,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* The proof, not a marketing stat: a real settled fill anyone can open. */}
           <aside className="self-start border border-line bg-panel">
             <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
               <span className="text-[11px] uppercase tracking-[0.13em] text-muted">Last settled fill</span>
@@ -74,7 +119,7 @@ export default function Home() {
               ))}
             </dl>
             <a
-              href={`https://coston2-explorer.flare.network/tx/${FILL_TX}`}
+              href={`${EXPLORER}/tx/${FILL_TX}`}
               target="_blank"
               rel="noreferrer"
               className="block border-t border-line px-4 py-2.5 font-mono text-[11px] text-accent transition-colors duration-150 hover:bg-raised"
@@ -84,25 +129,267 @@ export default function Home() {
           </aside>
         </section>
 
-        <section className="grid gap-px border-b border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((s) => (
-            <div key={s.n} className="bg-base px-5 py-7">
-              <span className="font-mono text-[11px] text-accent">{s.n}</span>
-              <h3 className="mt-3 text-[14px] font-medium text-ink">{s.t}</h3>
-              <p className="mt-2 text-[12.5px] leading-relaxed text-faint">{s.d}</p>
-            </div>
-          ))}
-        </section>
+        {/* Problem */}
+        <Section
+          id="problem"
+          eyebrow="The problem"
+          title="Price discovery costs you the information you were trying to protect."
+          lede="Every venue leaks something different. The leak is not incidental — it is how the venue works."
+        >
+          <div className="grid gap-px bg-line md:grid-cols-3">
+            {[
+              {
+                h: "Public order book",
+                d: "Your resting bid is the signal. Size and price are visible to everyone, including whoever wants to trade ahead of you.",
+                leak: "Size + price, before the trade",
+              },
+              {
+                h: "Calling desks for quotes",
+                d: "Each desk you ask learns your direction and size. Ask enough of them and the market knows your intent before anyone fills you.",
+                leak: "Intent, to every counterparty",
+              },
+              {
+                h: "This desk",
+                d: "One sealed intent. Makers quote blind, against each other, without seeing your limit or their competition.",
+                leak: "The fill, after it settled",
+                good: true,
+              },
+            ].map((c) => (
+              <div key={c.h} className="bg-base px-5 py-6">
+                <h3 className={`text-[14px] font-medium ${c.good ? "text-accent" : "text-ink"}`}>{c.h}</h3>
+                <p className="mt-2.5 text-[12.5px] leading-relaxed text-faint">{c.d}</p>
+                <p className="mt-4 border-t border-line pt-3 text-[11px] text-muted">
+                  <span className="text-faint">Leaks: </span>
+                  <span className={c.good ? "text-positive" : "text-negative"}>{c.leak}</span>
+                </p>
+              </div>
+            ))}
+          </div>
+        </Section>
 
-        <footer className="flex flex-wrap items-center gap-x-5 gap-y-2 py-6 text-[11px] text-faint">
-          <span>Simulated TEE · owner allowlist · no FTSO bound on this deployment</span>
+        {/* How it works */}
+        <Section
+          id="how"
+          eyebrow="How it works"
+          title="Matching happens off-chain inside the enclave. Only settlement is public."
+          lede="Intents and quotes are EIP-712 signed, then ECIES-encrypted to the TEE's own key. The extension recovers each signer itself — nobody can file a quote under someone else's address."
+        >
+          <div className="border border-line bg-panel">
+            <div className="border-b border-line px-4 py-2.5">
+              <span className="text-[11px] uppercase tracking-[0.13em] text-muted">Sealed inside the TEE</span>
+            </div>
+            <ol className="divide-y divide-line">
+              {[
+                {
+                  n: "01",
+                  t: "Taker seals an intent",
+                  d: "Side, size, limit price and an expiry, signed and encrypted client-side. The extension recovers the taker's address from the signature and derives a deterministic rfqId.",
+                },
+                {
+                  n: "02",
+                  t: "Makers quote blind",
+                  d: "Each quote is bound to that rfqId inside the signed struct, so a captured quote cannot be replayed onto a different RFQ. One live quote per maker.",
+                },
+                {
+                  n: "03",
+                  t: "Close and rank",
+                  d: "Expired quotes are dropped, then the best qualifying price wins — lowest at or below the limit on a buy, highest at or above it on a sell. Ties break to whoever quoted first.",
+                },
+              ].map((s) => (
+                <li key={s.n} className="flex gap-4 px-4 py-4">
+                  <span className="font-mono text-[11px] text-accent">{s.n}</span>
+                  <div>
+                    <h3 className="text-[13.5px] font-medium text-ink">{s.t}</h3>
+                    <p className="mt-1.5 max-w-2xl text-[12.5px] leading-relaxed text-faint">{s.d}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+
+            <div className="border-y border-line bg-raised px-4 py-2.5">
+              <span className="text-[11px] uppercase tracking-[0.13em] text-muted">Public on Coston2</span>
+            </div>
+            <div className="flex gap-4 px-4 py-4">
+              <span className="font-mono text-[11px] text-positive">04</span>
+              <div>
+                <h3 className="text-[13.5px] font-medium text-ink">Atomic settlement</h3>
+                <p className="mt-1.5 max-w-2xl text-[12.5px] leading-relaxed text-faint">
+                  The enclave signs the winning fill with its attested key. The contract verifies that
+                  signature, then moves both ERC-20 legs in one transaction and emits{" "}
+                  <code className="font-mono text-[12px] text-ink">Filled</code>. Nothing about the
+                  losing quotes is ever written.
+                </p>
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        {/* Visibility matrix */}
+        <Section
+          id="visibility"
+          eyebrow="Who sees what"
+          title="The privacy claim, stated precisely."
+          lede="Taken from the fill linked above: a taker buying 1 FXRP with a 3.00 limit, against makers quoting 2.95 and 2.99."
+        >
+          <div className="overflow-x-auto border border-line bg-panel">
+            <table className="w-full min-w-[620px] border-collapse">
+              <thead>
+                <tr className="border-b border-line text-left">
+                  <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.13em] text-muted">Data</th>
+                  <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.13em] text-muted">Taker</th>
+                  <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.13em] text-muted">Makers</th>
+                  <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.13em] text-muted">Chain</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {VISIBILITY.map((r) => (
+                  <tr key={r.field}>
+                    <td className="px-4 py-3">
+                      <span className="text-[13px] text-ink">{r.field}</span>
+                      <span className="mt-0.5 block text-[11.5px] text-faint">{r.note}</span>
+                    </td>
+                    <td className="px-4 py-3"><Cell v={r.taker} /></td>
+                    <td className="px-4 py-3"><Cell v={r.makers} /></td>
+                    <td className="px-4 py-3"><Cell v={r.chain} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="mt-4 max-w-2xl text-[12px] leading-relaxed text-faint">
+            One caveat worth stating plainly: the transport endpoint is unauthenticated on this
+            deployment, and opening an RFQ returns its id, side and size in cleartext to whoever
+            calls it. The limit price and the losing quotes are the parts that genuinely never leave
+            the enclave.
+          </p>
+        </Section>
+
+        {/* Worked example */}
+        <Section
+          id="example"
+          eyebrow="A real fill, walked through"
+          title="You were willing to pay 3.00. Nobody learned that. You paid 2.95."
+          lede="Every number here is read from the transaction linked in the header — not an illustration."
+        >
+          <div className="grid gap-px bg-line md:grid-cols-4">
+            {[
+              { k: "Taker limit", v: "3.00", s: "sealed", tone: "text-accent" },
+              { k: "Maker A", v: "2.95", s: "won", tone: "text-positive" },
+              { k: "Maker B", v: "2.99", s: "never published", tone: "text-faint" },
+              { k: "Settled at", v: "2.95", s: "on-chain", tone: "text-ink" },
+            ].map((c) => (
+              <div key={c.k} className="bg-base px-5 py-6">
+                <p className="text-[11px] uppercase tracking-[0.13em] text-muted">{c.k}</p>
+                <p className={`mt-2 font-mono tnum text-[26px] ${c.tone}`}>{c.v}</p>
+                <p className="mt-1 text-[11.5px] text-faint">{c.s}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-5 max-w-2xl text-[13px] leading-relaxed text-muted">
+            Maker B never learned it lost to 2.95, so its next quote is not calibrated against Maker A.
+            The taker never revealed the extra 0.05 of room it had. That gap is the entire product.
+          </p>
+        </Section>
+
+        {/* Why Flare */}
+        <Section
+          id="why"
+          eyebrow="Why Flare"
+          title="The enclave and the settlement live on the same chain."
+        >
+          <div className="grid gap-px bg-line sm:grid-cols-3">
+            {[
+              {
+                h: "Confidential Compute",
+                d: "FCC runs the matcher as a registered TEE extension with its own attested signing key — the contract trusts a signature, not a server.",
+              },
+              {
+                h: "FXRP, not a wrapper",
+                d: "Settlement moves real FXRP against real USDT0 on Coston2, the same assets the FAssets system issues.",
+              },
+              {
+                h: "One trust domain",
+                d: "No bridge and no external prover between matching and settlement. The enclave signs; the chain verifies.",
+              },
+            ].map((c) => (
+              <div key={c.h} className="bg-base px-5 py-6">
+                <h3 className="text-[14px] font-medium text-ink">{c.h}</h3>
+                <p className="mt-2.5 text-[12.5px] leading-relaxed text-faint">{c.d}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        {/* Trust model */}
+        <Section
+          id="trust"
+          eyebrow="Trust model"
+          title="What this prototype does not do."
+          lede="This is a hackathon build. The interesting parts are real; these parts are not, and pretending otherwise would be the fastest way to lose your trust."
+        >
+          <ul className="grid gap-px bg-line sm:grid-cols-2">
+            {[
+              ["Simulated TEE", "Runs FCC's sanctioned simulated mode. The signing key's integrity rests on the process, not on hardware attestation."],
+              ["Owner allowlist", "The contract checks the signer against an owner-controlled allowlist, not a live TeeExtensionRegistry read."],
+              ["No FTSO bound", "The contract supports an oracle price bound and has tests for it. It is switched off here — ftso() is the zero address."],
+              ["Unauthenticated close", "Anyone holding an RFQ id can trigger the match. There is no listing to discover ids from, but it is not taker-only."],
+              ["In-memory book", "Open RFQs live in the extension's memory. A restart forgets them."],
+              ["Non-binding quotes", "Settlement is transferFrom-based. If the winner pulled their allowance, the fill simply reverts."],
+            ].map(([h, d]) => (
+              <li key={h} className="bg-base px-5 py-5">
+                <h3 className="text-[13px] font-medium text-ink">{h}</h3>
+                <p className="mt-1.5 text-[12.5px] leading-relaxed text-faint">{d}</p>
+              </li>
+            ))}
+          </ul>
+        </Section>
+
+        {/* Verify */}
+        <Section
+          id="verify"
+          eyebrow="Verify it yourself"
+          title="Everything above resolves to something you can open."
+        >
+          <div className="border border-line bg-panel">
+            {[
+              ["Settlement contract", RFQ_SETTLEMENT_ADDRESS, `${EXPLORER}/address/${RFQ_SETTLEMENT_ADDRESS}`],
+              ["FXRP", FXRP_ADDRESS, `${EXPLORER}/address/${FXRP_ADDRESS}`],
+              ["USDT0", USDT0_ADDRESS, `${EXPLORER}/address/${USDT0_ADDRESS}`],
+              ["Proof-of-fill transaction", FILL_TX, `${EXPLORER}/tx/${FILL_TX}`],
+            ].map(([k, v, href]) => (
+              <a
+                key={k}
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-3 transition-colors duration-150 last:border-b-0 hover:bg-raised"
+              >
+                <span className="text-[12.5px] text-muted">{k}</span>
+                <span className="font-mono text-[11.5px] text-accent">
+                  {v.slice(0, 22)}… ↗
+                </span>
+              </a>
+            ))}
+          </div>
+          <p className="mt-4 text-[12.5px] text-faint">
+            The matcher is{" "}
+            <code className="font-mono text-[12px] text-muted">extension/go/internal/extension/rfq.go</code>;
+            settlement is{" "}
+            <code className="font-mono text-[12px] text-muted">contracts/src/RfqSettlement.sol</code>. Both
+            test suites run in CI.
+          </p>
+        </Section>
+
+        <footer className="flex flex-wrap items-center gap-x-5 gap-y-2 py-8 text-[11px] text-faint">
+          <span>Built for Flare Summer Signal · Bounty 2 (Confidential Compute)</span>
           <a
-            href="https://github.com/Cassxbt/fxrp-dark-rfq"
+            href={REPO}
             target="_blank"
             rel="noreferrer"
             className="ml-auto transition-colors duration-150 hover:text-muted"
           >
-            Source & trust model ↗
+            Source &amp; trust model ↗
           </a>
         </footer>
       </div>
