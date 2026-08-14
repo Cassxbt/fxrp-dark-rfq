@@ -1,18 +1,9 @@
 /**
- * Browser-safe port of go-ethereum's crypto/ecies package (AES128_SHA256
- * params) — this is what the TEE extension decrypts with (see
- * extension/go/internal/extension/utils.go's decryptViaNode call chain).
- *
- * Do not swap this for a generic ECIES library. go-ethereum's construction is
- * specific: NIST SP 800-56 concat-KDF (not HKDF), AES-128-CTR (not GCM/CBC),
- * and an HMAC-SHA256 tag over the ciphertext only (not AAD-bound). A
- * "standard" ECIES implementation will not produce compatible ciphertext.
- *
- * Verified byte-for-byte against the live deployed TEE before this file was
- * used anywhere near the UI. secp256k1 ECDH
- * uses @noble/curves because Web Crypto's ECDH only supports NIST P-curves,
- * not secp256k1; everything else (SHA-256, HMAC, AES-CTR) uses the Web Crypto
- * API directly since it's natively available in every target browser.
+ * Browser-safe port of go-ethereum's crypto/ecies (AES128_SHA256), which is what
+ * the TEE decrypts with. Not interchangeable with a generic ECIES library: the
+ * construction is concat-KDF + AES-128-CTR + HMAC-SHA256 over ciphertext only.
+ * secp256k1 ECDH comes from @noble/curves because Web Crypto supports only the
+ * NIST P-curves.
  */
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 

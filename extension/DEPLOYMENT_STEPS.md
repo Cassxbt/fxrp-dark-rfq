@@ -1,4 +1,4 @@
-# 🚀 TEE Extension Deployment — Step by Step
+# TEE Extension Deployment — Step by Step
 
 Linear recipe to deploy a TEE extension to Flare Coston or Coston2. Run the steps top to bottom.
 
@@ -9,17 +9,17 @@ Linear recipe to deploy a TEE extension to Flare Coston or Coston2. Run the step
 > and proxy as **local Docker containers** with a **simulated** TEE
 > (`SIMULATED_TEE=true`, `MODE=1`) exposed via **ngrok** — no VM and no devops
 > hand-off. Steps 1–4 and 8–9 are identical; only Steps 5–7 change. See
-> [Local / simulated deployment](#local--simulated-deployment-docker--ngrok).
+> [Local / simulated deployment](#local-simulated-deployment-docker-ngrok).
 
 ## Prerequisites
 
-- 🐳 Docker Desktop (Linux containers)
-- 🐹 Go 1.25.1+
-- 🔨 Foundry (`forge`, `cast`)
+-  Docker Desktop (Linux containers)
+-  Go 1.25.1+
+-  Foundry (`forge`, `cast`)
 - `jq` and `curl`
 - Bash (Git Bash on Windows works)
 - **Indexer DB access** — the `ext-proxy` queries a Flare indexer DB to find TEE events and instruction responses. You'll need to either run your own indexer or connect to a public one (talk to a Flare team member for access). Host + creds go in [Indexer DB credentials](#indexer-db-credentials).
-- **ngrok** — only for the **local / simulated** flow ([Local / simulated deployment](#local--simulated-deployment-docker--ngrok)). A free account is enough; its reserved domain gives a stable public URL for your local proxy.
+- **ngrok** — only for the **local / simulated** flow ([Local / simulated deployment](#local-simulated-deployment-docker-ngrok)). A free account is enough; its reserved domain gives a stable public URL for your local proxy.
 - A **GCP Confidential Space VM** (or a devops contact to hand the image off to) — only for the **deployed** flow ([Step 6](#6-deploy-the-image-on-a-confidential-space-vm)).
 
 ## Indexer DB credentials
@@ -180,10 +180,10 @@ bash ./scripts/use-chain.sh --help                                 # usage
 
 > [!TIP]
 > The `local` variant copies `.env.local.<chain>` instead of `.env.<chain>` — see
-> [Local / simulated deployment](#local--simulated-deployment-docker--ngrok). For the
+> [Local / simulated deployment](#local-simulated-deployment-docker-ngrok). For the
 > normal deployed path, omit it.
 
-Copies `.env.<chain>` → `.env` (and sets `LANGUAGE` if you passed one), which all
+Copies `.env.<chain>`  `.env` (and sets `LANGUAGE` if you passed one), which all
 scripts auto-load. The language you pick here is what `build-image.sh` builds in [Step 5](#5-build-the-docker-image).
 
 ## 4. Register the extension on-chain
@@ -271,7 +271,7 @@ EXT_PROXY_URL=<public proxy URL>
 ```
 
 ```bash
-bash ./scripts/use-chain.sh <chain>   # re-copies .env.<chain> → .env, now with EXT_PROXY_URL set
+bash ./scripts/use-chain.sh <chain>   # re-copies .env.<chain>  .env, now with EXT_PROXY_URL set
 ```
 
 ## 7. Verify the proxy `/info`
@@ -287,9 +287,7 @@ Required values:
 | `platform`     | starts with `0x4743505f414d445f534556…` (GCP_AMD_SEV)         |
 | `codeHash`     | real measured hash (**not** `0x194844cf…` — that's simulated) |
 | `extensionId`  | matches your `config/extension.env` `EXTENSION_ID`            |
-| `initialOwner` | matches your `INITIAL_OWNER`                                  |
-
-If `extensionId` is wrong, ask the VM operator to restart the container with the correct `EXTENSION_ID` env override (no image rebuild needed — it's a launch-policy override).
+| `initialOwner` | matches your `INITIAL_OWNER`                                  | If `extensionId` is wrong, ask the VM operator to restart the container with the correct `EXTENSION_ID` env override (no image rebuild needed — it's a launch-policy override).
 
 ## 8. Register the TEE machine
 
@@ -324,8 +322,8 @@ reachable from the chain via an **ngrok** tunnel. No GCP Confidential Space VM a
 no devops hand-off — useful for development against the real Coston/Coston2 chain.
 
 **What differs from the production path:** Steps 1–4 and 8–9 are unchanged. You
-activate the `local` variant in Step 3, and replace Steps 5–7 (build image → VM
-hand-off → verify) with the Docker + ngrok flow below.
+activate the `local` variant in Step 3, and replace Steps 5–7 (build image  VM
+hand-off  verify) with the Docker + ngrok flow below.
 
 ### What `local` changes in `.env`
 
@@ -335,9 +333,7 @@ Only **two** values differ from the deployed template:
 | Variable        | Deployed                      | Local / simulated |
 | --------------- | ----------------------------- | ----------------- |
 | `SIMULATED_TEE` | `false`                       | `true`            |
-| `EXT_PROXY_URL` | devops proxy (`…flare.rocks`) | your ngrok URL    |
-
-Everything else is identical. In particular:
+| `EXT_PROXY_URL` | devops proxy (`…flare.rocks`) | your ngrok URL    | Everything else is identical. In particular:
 
 - `LOCAL_MODE` stays **`false`** — you're still on the real chain; only the TEE is simulated.
 - `MODE` is **not** in `.env`. `docker-compose.yaml` injects `MODE=1` into the
@@ -378,7 +374,7 @@ Everything else is identical. In particular:
    so `.env` picks it up:
 
    ```bash
-   # edit .env.local.coston2 → EXT_PROXY_URL=https://your-domain.ngrok-free.dev
+   # edit .env.local.coston2  EXT_PROXY_URL=https://your-domain.ngrok-free.dev
    bash ./scripts/use-chain.sh local coston2 go
    ```
 
@@ -387,7 +383,7 @@ Everything else is identical. In particular:
    > Forwarding URL stays the same across restarts — you normally set
    > `EXT_PROXY_URL` once and leave it. Only re-paste if it ever changes.
 
-4. **Configure the proxy's indexer DB.** ⚠️ Load-bearing. `start-services.sh` (next
+4. **Configure the proxy's indexer DB.**  Load-bearing. `start-services.sh` (next
    step) runs your own ext-proxy, which queries the indexer directly. Create
    `config/proxy/extension_proxy.<chain>.docker.toml` and fill its `[db]` block —
    see [Indexer DB credentials](#indexer-db-credentials) (Coston2 and Coston have
@@ -409,13 +405,7 @@ Everything else is identical. In particular:
    curl -s "$EXT_PROXY_URL/info" | jq '.machineData'
    ```
 
-   | Field          | Expected (simulated)                                               |
-   | -------------- | ------------------------------------------------------------------ |
-   | `codeHash`     | `0x194844cf…` (the **simulated** hash — production _rejects_ this) |
-   | `extensionId`  | matches `config/extension.env` `EXTENSION_ID`                      |
-   | `initialOwner` | matches your `INITIAL_OWNER`                                       |
-
-7. **Register the TEE and test** — exactly Steps 8–9:
+   | Field          | Expected (simulated)                                               | | -------------- | ------------------------------------------------------------------ | | `codeHash`     | `0x194844cf…` (the **simulated** hash — production _rejects_ this) | | `extensionId`  | matches `config/extension.env` `EXTENSION_ID`                      | | `initialOwner` | matches your `INITIAL_OWNER`                                       | 7. **Register the TEE and test** — exactly Steps 8–9:
 
    ```bash
    bash ./scripts/post-build.sh
@@ -439,7 +429,7 @@ Everything else is identical. In particular:
 ## When the extension image changes
 
 1. Rebuild and hand off the new image.
-2. The VM is re-deployed → `codeHash` changes.
+2. The VM is re-deployed  `codeHash` changes.
 3. `bash ./scripts/post-build.sh` whitelists the new codeHash.
 4. `bash ./scripts/test.sh`.
 
@@ -472,7 +462,7 @@ It reads (read-only — no transactions) the TEE proxy's `/info`, the on-chain T
 | ---------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `test.sh` reverts with `0xd65ac61e` (`MachineManager.TooMany()`) | `MISMATCH: InstructionSender ext=X ≠ TEE on-chain ext=Y`             | Set `INSTRUCTION_SENDER` in `config/extension.env` to the address the diag prints under `[TEE record ext=Y]`.                                                   |
 | `post-build.sh` reverts with `MachineManager.InvalidTeeStatus()` | `toProduction will revert: status=1 (PRODUCTION)`                    | TEE is already promoted. Skip post-build entirely, or rely on the idempotency guard in `registration.go` (which short-circuits when status=PRODUCTION).         |
-| `check-tee-state` says active set is empty _and_ IDs all agree   | (no MISMATCH line; "active set was emptied for a non-status reason") | TEE was banned or its version disabled. Investigate via on-chain events; `pause()` → re-promote is the recovery path, but only the TEE machine owner can do it. |
+| `check-tee-state` says active set is empty _and_ IDs all agree   | (no MISMATCH line; "active set was emptied for a non-status reason") | TEE was banned or its version disabled. Investigate via on-chain events; `pause()`  re-promote is the recovery path, but only the TEE machine owner can do it. |
 
 ### Deploying from a fresh clone (without re-minting)
 
@@ -503,7 +493,7 @@ bash ./scripts/generate-bindings.sh
 `config/extension.env` is generated per-deploy and gitignored, so it never comes with a clone. Recover both values without re-minting:
 
 - `EXTENSION_ID` — read it from the deployed proxy: `curl -s "$EXT_PROXY_URL/info" | jq '.machineData.extensionId'`.
-- `INSTRUCTION_SENDER` — query the on-chain extension→sender mapping on the `FlareTeeManager` diamond (its address is the `FlareTeeManager` entry in `config/<chain>/deployed-addresses.json`):
+- `INSTRUCTION_SENDER` — query the on-chain extensionsender mapping on the `FlareTeeManager` diamond (its address is the `FlareTeeManager` entry in `config/<chain>/deployed-addresses.json`):
 
   ```bash
   # CHAIN= prefix stops cast from treating the .env CHAIN=coston2 as a --chain alias it doesn't know

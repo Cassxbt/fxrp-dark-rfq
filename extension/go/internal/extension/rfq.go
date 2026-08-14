@@ -75,16 +75,10 @@ type quoteEntry struct {
 	ReceivedAt time.Time
 }
 
-// rfqBook holds all state for the RFQ extension: open RFQs, and a nonce-reuse
-// guard that's independent of the RFQ map so a replayed intent is rejected
-// even after the RFQ it originally opened has already closed and been
-// forgotten.
-//
-// usedNonces maps nonce -> the expiry of the intent that used it, not just a
-// bool. An intent can never succeed again once its own Expiry has passed
-// (processRfqOpen already rejects expired intents independently), so once
-// that time is reached the entry is safe to prune — this is what bounds the
-// map's growth.
+// rfqBook holds open RFQs plus a nonce guard kept separate from them, so a
+// replayed intent is still rejected after its RFQ has closed. usedNonces maps
+// nonce to the intent's expiry rather than a bool: past that point the entry
+// can never succeed again, which is what bounds the map.
 type rfqBook struct {
 	mu         sync.Mutex
 	open       map[common.Hash]*rfqState
@@ -121,14 +115,9 @@ func (b *rfqBook) pruneExpired(now uint64) {
 	}
 }
 
-// validateRfqIntent rejects a decoded-but-unchecked RfqIntent before it's
-// hashed or stored. Required: json.Unmarshal leaves *big.Int fields nil when
-// the client omits them, and .Bytes() on a nil *big.Int panics — reject
-// cleanly here instead of crashing the request goroutine.
-// Negative values are also rejected: big.Int.Bytes() encodes only the
-// magnitude, but the on-chain Fill encodes the same field via two's-complement
-// ABI packing — a negative value would hash differently in Go than what
-// actually gets ABI-encoded on-chain, silently breaking the signature.
+// Omitted *big.Int fields unmarshal as nil and panic on .Bytes(). Negatives are
+// rejected too: big.Int.Bytes() drops the sign, so a negative would hash
+// differently here than the two's-complement ABI encoding on-chain.
 func validateRfqIntent(i rfqIntent) error {
 	if i.Size == nil || i.LimitPrice == nil || i.RfqNonce == nil {
 		return fmt.Errorf("size, limitPrice, and rfqNonce must all be present")
@@ -153,16 +142,9 @@ func validateQuote(q quote) error {
 	return nil
 }
 
-// EIP-712 domain and type hashes, matching RfqSettlement.sol exactly.
-//
-// contracts/src/RfqSettlement.sol:
-//   EIP712("RfqSettlement", "1")
-//   FILL_TYPEHASH = keccak256("Fill(bytes32 rfqId,address taker,address maker,uint8 side,uint256 size,uint256 price,uint256 expiry)")
-//
-// RfqIntent and Quote are verified only here in the extension (not re-checked
-// on-chain — the disclosed trust-model choice, see docs/TRUST.md), but they
-// use the *same* domain as Fill so all three are bound to this contract and
-// can't be replayed against a different one.
+// Must match RfqSettlement.sol's EIP712("RfqSettlement", "1") exactly. Intent
+// and Quote are verified only here, but share Fill's domain so all three bind
+// to this contract and cannot be replayed against another.
 
 const (
 	eip712DomainTypehash = "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"

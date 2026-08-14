@@ -65,7 +65,7 @@ bash ./scripts/full-setup.sh --test       # defaults to --chain local
 Each phase can also be run individually:
 
 ```bash
-./scripts/pre-build.sh         # 1. Deploy contract + register extension → config/extension.env
+./scripts/pre-build.sh         # 1. Deploy contract + register extension  config/extension.env
 ./scripts/start-services.sh    # 2. Docker compose up (redis + ext-proxy + extension-tee)
 ./scripts/post-build.sh        # 3. Allow TEE version + register TEE machine on-chain
 ./scripts/test.sh              # 4. Scaffold's own smoke test — signs with UPDATE/SIGN

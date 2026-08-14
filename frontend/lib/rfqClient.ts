@@ -9,17 +9,9 @@ function opHash(s: string): `0x${string}` {
   return bytesToHex(padded) as `0x${string}`;
 }
 
-/**
- * Go's encoding/json decodes a plain `[]byte` field as base64 by default,
- * not hex — the extension's signedEnvelope[T]{ Signature []byte } (rfq.go)
- * uses exactly that. wagmi's signTypedData returns a hex string; sending it
- * through unconverted would make Go's json.Unmarshal base64-decode "0x1a2b..."
- * into 99 garbage bytes instead of the real 65-byte signature, and
- * recoverSigner's explicit len(sig) != 65 check would reject every OPEN and
- * QUOTE (this broke the entire happy path, and the
- * project's own Go-to-Go integration test never exposed it because both
- * sides there used Go's default []byte marshaling consistently).
- */
+/** Go decodes a plain `[]byte` field as base64, not hex. Sending wagmi's hex
+ *  signature through unconverted yields 99 garbage bytes and fails every
+ *  signature check. */
 function hexSignatureToBase64(hexSig: `0x${string}`): string {
   const bytes = hexToBytes(hexSig);
   let binary = "";
@@ -27,17 +19,9 @@ function hexSignatureToBase64(hexSig: `0x${string}`): string {
   return btoa(binary);
 }
 
-/**
- * JSON.stringify with bigint fields emitted as raw, unquoted number literals
- * instead of strings. Go's math/big.Int.UnmarshalJSON requires a bare JSON
- * number ("size":1000000) and rejects a quoted string ("size":"1000000")
- * outright — found live via verify-signature-encoding.mts, not by
- * inspection: "math/big: cannot unmarshal \"1000000\" into a *big.Int".
- * Values like WAD prices (1e18 scale) exceed Number.MAX_SAFE_INTEGER, so a
- * plain `Number(x)` round-trip would lose precision — this uses a sentinel
- * string during JSON.stringify, then strips the surrounding quotes with a
- * regex pass afterward, preserving full precision.
- */
+/** Go's big.Int requires bare JSON numbers and rejects quoted strings. WAD
+ *  values exceed MAX_SAFE_INTEGER, so this round-trips through a sentinel
+ *  rather than Number(). */
 function stringifyWithRawBigInts(value: unknown): string {
   const marker = "__BIGINT__";
   const json = JSON.stringify(value, (_key, v) => (typeof v === "bigint" ? `${marker}${v.toString()}${marker}` : v));
@@ -55,10 +39,7 @@ export async function fetchTeePubKey(): Promise<Uint8Array> {
   const { x, y } = info.machineData.publicKey as { x: string; y: string };
   const pubKey = new Uint8Array(65);
   pubKey[0] = 0x04;
-  // Zero-pad each coordinate to 32 bytes — the hex from /info is not
-  // guaranteed fixed-width (a coordinate with a leading zero byte serializes
-  // shorter), and writing it unpadded would misalign the byte layout
-  // (~1/256 chance per coordinate, but real).
+  // /info's hex is not fixed-width; an unpadded coordinate misaligns the layout.
   pubKey.set(padTo32(hexToBytes(x)), 1);
   pubKey.set(padTo32(hexToBytes(y)), 33);
   cachedPubKey = pubKey;
@@ -71,14 +52,8 @@ interface DirectResult {
   data: string; // hex
 }
 
-/**
- * Encrypts `data` to the TEE's pubkey, wraps it with `signature` in the
- * signedEnvelope shape the extension expects (see rfq.go's signedEnvelope[T]),
- * and dispatches it via the proxy's /direct endpoint. Polls for the result —
- * matches the pattern verified live against the real stack (see
- * extension/go/internal/extension/rfq_integration_test.go and
- * frontend/scripts/verify-ecies.mts).
- */
+/** Encrypts to the TEE's pubkey, wraps with the signature, dispatches via
+ *  /direct and polls for the result. */
 export async function sendRfqDirect(
   opCommand: "OPEN" | "QUOTE" | "CLOSE",
   payload: { data: unknown; signature: `0x${string}` } | Uint8Array,
@@ -87,9 +62,7 @@ export async function sendRfqDirect(
 
   let plaintext: Uint8Array;
   if (payload instanceof Uint8Array) {
-    // CLOSE sends a plaintext rfqId, not an encrypted envelope — there's no
-    // secret in "please close now," matching rfq.go's processRfqClose which
-    // reads df.OriginalMessage directly as 32 raw bytes.
+    // CLOSE carries no secret, so it goes as a plaintext 32-byte rfqId.
     plaintext = payload;
   } else {
     const encodedPayload = { data: payload.data, signature: hexSignatureToBase64(payload.signature) };
@@ -110,11 +83,8 @@ export async function sendRfqDirect(
   const directJson = await directResp.json();
   const actionId: string = directJson.data.id;
 
-  // Direct actions are tagged "submit" (queue.DirectInstructionToAction on
-  // the proxy side) — /action/result/{id} defaults to "threshold" if this
-  // isn't passed explicitly, which silently returns nothing for a
-  // submit-tagged action (found and fixed the hard way in the Go integration
-  // test).
+  // Direct actions are tagged "submit"; without this the endpoint defaults to
+  // "threshold" and silently returns nothing.
   for (let i = 0; i < 15; i++) {
     const resp = await fetch(`${EXT_PROXY_URL}/action/result/${actionId}?submissionTag=submit`);
     if (resp.ok) {

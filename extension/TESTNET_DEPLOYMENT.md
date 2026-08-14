@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛡️ Testnet Deployment Guide
+# Testnet Deployment Guide
 
 **Deploy the `sign` extension to Flare Coston / Coston2 on a real GCP Confidential Space TEE.**
 Image hand-off to devops, on-chain registration, and the FTDC availability check — end to end.
@@ -21,21 +21,21 @@ Image hand-off to devops, on-chain registration, and the FTDC availability check
 >
 > **Status:** Coston end-to-end verified 2026-05-14. Coston2 end-to-end verified 2026-05-18 on the re-cut diamond (commit `bdb7c80`); Python (slim) re-verified 2026-05-27.
 
-## 📑 Contents
+## Contents
 
-- [🗺️ First-time deployment checklist](#%EF%B8%8F-first-time-deployment-checklist)
-- [📋 Prerequisites](#-prerequisites)
-- [⚙️ Configuration files](#%EF%B8%8F-configuration-files)
-- [📦 Building the Docker image for devops](#-building-the-docker-image-for-devops)
-- [🤝 Devops responsibilities](#-devops-responsibilities)
-- [🚀 Deployment flow](#-deployment-flow)
-- [🐛 Troubleshooting](#-troubleshooting)
-- [🔄 Re-deployment after image updates](#-re-deployment-after-image-updates)
-- [🧹 Lifecycle & decommissioning](#-lifecycle--decommissioning)
-- [📚 Reference: working configuration](#-reference-working-configuration)
-- [🔗 Related docs](#-related-docs)
+- [First-time deployment checklist](#first-time-deployment-checklist)
+- [Prerequisites](#prerequisites)
+- [Configuration files](#configuration-files)
+- [Building the Docker image for devops](#building-the-docker-image-for-devops)
+- [ Devops responsibilities](#devops-responsibilities)
+- [Deployment flow](#deployment-flow)
+- [ Troubleshooting](#troubleshooting)
+- [ Re-deployment after image updates](#re-deployment-after-image-updates)
+- [ Lifecycle & decommissioning](#lifecycle-decommissioning)
+- [ Reference: working configuration](#reference-working-configuration)
+- [Related docs](#related-docs)
 
-## 🗺️ First-time deployment checklist
+## First-time deployment checklist
 
 **The shape of a deployment, in plain English:** you build a reproducible Docker image of the extension locally and hand it to devops, who runs it on a GCP Confidential Space VM. While that's spinning up, you register the extension on-chain (Phase 1, `pre-build.sh`) — this mints an `EXTENSION_ID` that devops then injects into the running container. Once devops's proxy is reporting your `EXTENSION_ID` and a real GCP-measured `codeHash`, you do the second on-chain registration (Phase 3, `post-build.sh`) — whitelisting that codeHash and registering the TEE machine with FTDC. A successful `test.sh` round-trip confirms the whole pipeline.
 
@@ -43,33 +43,31 @@ The table below is the linear path from zero to that working state. Each step li
 
 | #   | Step                                                                                                                                                                                                     | Where                                                               |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| 1   | Generate a deployer private key + derive `INITIAL_OWNER`                                                                                                                                                 | [Deployer key](#deployer-key--funded-testnet-accounts)              |
-| 2   | Fund the address on the target chain from the faucet                                                                                                                                                     | [Faucet table](#deployer-key--funded-testnet-accounts)              |
+| 1   | Generate a deployer private key + derive `INITIAL_OWNER`                                                                                                                                                 | [Deployer key](#deployer-key-funded-testnet-accounts)              |
+| 2   | Fund the address on the target chain from the faucet                                                                                                                                                     | [Faucet table](#deployer-key-funded-testnet-accounts)              |
 | 3   | Clone the sign extension repo — no sibling repos needed (`tee-node` / `tee-proxy` are fetched from GitHub at build time)                                                                                 | [Get the repo](#get-the-repo)                                       |
-| 4   | Bootstrap `.env.<chain>` (and `extension_proxy.<chain>.docker.toml` for Coston2) from the templates                                                                                                      | [Configuration files](#%EF%B8%8F-configuration-files)               |
-| 5   | Activate the target chain + language: `bash ./scripts/use-chain.sh coston2 [language]`                                                                                                                   | [Configuration files](#%EF%B8%8F-configuration-files)               |
-| 6   | Build the image and verify `MODE=0` is baked in: `bash ./scripts/build-image.sh`                                                                                                                         | [Building the Docker image](#-building-the-docker-image-for-devops) |
-| 7   | Hand off image + config values to devops (**Aljaž Konečnik**)                                                                                                                                            | [Devops handoff checklist](#-devops-handoff-checklist)              |
+| 4   | Bootstrap `.env.<chain>` (and `extension_proxy.<chain>.docker.toml` for Coston2) from the templates                                                                                                      | [Configuration files](#configuration-files)               |
+| 5   | Activate the target chain + language: `bash ./scripts/use-chain.sh coston2 [language]`                                                                                                                   | [Configuration files](#configuration-files)               |
+| 6   | Build the image and verify `MODE=0` is baked in: `bash ./scripts/build-image.sh`                                                                                                                         | [Building the Docker image](#building-the-docker-image-for-devops) |
+| 7   | Hand off image + config values to devops (**Aljaž Konečnik**)                                                                                                                                            | [Devops handoff checklist](#devops-handoff-checklist)              |
 | 8   | Wait for devops's `/info` to come up, then verify it (see step below)                                                                                                                                    | [Verifying devops's /info](#verifying-devopss-info)                 |
-| 9   | Run `bash ./scripts/pre-build.sh` — deploys `InstructionSender`, registers extension, emits `EXTENSION_ID` + `INSTRUCTION_SENDER`                                                                        | [Deployment flow](#-deployment-flow)                                |
-| 10  | Send the new `EXTENSION_ID` to devops; they restart the container with that env value (no image rebuild needed). Keep `INSTRUCTION_SENDER` in your local `config/extension.env` — devops doesn't need it | [Devops handoff checklist](#-devops-handoff-checklist)              |
+| 9   | Run `bash ./scripts/pre-build.sh` — deploys `InstructionSender`, registers extension, emits `EXTENSION_ID` + `INSTRUCTION_SENDER`                                                                        | [Deployment flow](#deployment-flow)                                |
+| 10  | Send the new `EXTENSION_ID` to devops; they restart the container with that env value (no image rebuild needed). Keep `INSTRUCTION_SENDER` in your local `config/extension.env` — devops doesn't need it | [Devops handoff checklist](#devops-handoff-checklist)              |
 | 11  | Re-curl `/info` and confirm `env_override.EXTENSION_ID` now matches your pre-build output                                                                                                                | [Verifying devops's /info](#verifying-devopss-info)                 |
-| 12  | Run `bash ./scripts/post-build.sh` — whitelists codeHash, registers TEE machine, FTDC availability check                                                                                                 | [Deployment flow](#-deployment-flow)                                |
-| 13  | Run `bash ./scripts/test.sh` — end-to-end `UPDATE` / `SIGN`                                                                                                                                              | [Deployment flow](#-deployment-flow)                                |
-
-> [!TIP]
+| 12  | Run `bash ./scripts/post-build.sh` — whitelists codeHash, registers TEE machine, FTDC availability check                                                                                                 | [Deployment flow](#deployment-flow)                                |
+| 13  | Run `bash ./scripts/test.sh` — end-to-end `UPDATE` / `SIGN`                                                                                                                                              | [Deployment flow](#deployment-flow)                                | > [!TIP]
 > Steps 9–12 are the loop you re-run whenever the FlareTeeManager diamond gets re-cut or the TEE image changes. The earlier steps are one-time per developer machine.
 
-## 📋 Prerequisites
+## Prerequisites
 
 ### Local machine
 
 | Tool                                 | Why                                           | Check                              |
 | ------------------------------------ | --------------------------------------------- | ---------------------------------- |
-| 🐳 Docker Desktop (Linux containers) | Builds + runs images                          | `docker info` returns daemon info  |
-| 🐹 Go 1.25.1+                        | Runs on-chain registration tools via `go run` | `go version`                       |
-| 🐚 Bash                              | Executes the deployment scripts               | Git Bash on Windows is fine        |
-| 🔨 Foundry (`forge`, `jq`)           | Solidity compilation in `pre-build.sh`        | `forge --version` / `jq --version` |
+| Docker Desktop (Linux containers) | Builds + runs images                          | `docker info` returns daemon info  |
+| Go 1.25.1+                        | Runs on-chain registration tools via `go run` | `go version`                       |
+| Bash                              | Executes the deployment scripts               | Git Bash on Windows is fine        |
+| Foundry (`forge`, `jq`)           | Solidity compilation in `pre-build.sh`        | `forge --version` / `jq --version` |
 
 ### Network access
 
@@ -111,12 +109,10 @@ Fund the derived address on each chain you'll deploy to. Use the chain-specific 
 | --------------- | -------------------------------------- |
 | Coston (CFLR)   | `https://faucet.flare.network/coston`  |
 | Coston2 (C2FLR) | `https://faucet.flare.network/coston2` |
-| Network picker  | `https://faucet.flare.network/`        |
-
-The same private key can serve both chains if both addresses are funded.
+| Network picker  | `https://faucet.flare.network/`        | The same private key can serve both chains if both addresses are funded.
 
 > [!NOTE]
-> Set this key as `DEPLOYMENT_PRIVATE_KEY` in `.env.<chain>` (without the `0x` prefix), and the derived address as `INITIAL_OWNER`. See [Configuration files](#%EF%B8%8F-configuration-files) for the full env layout.
+> Set this key as `DEPLOYMENT_PRIVATE_KEY` in `.env.<chain>` (without the `0x` prefix), and the derived address as `INITIAL_OWNER`. See [Configuration files](#configuration-files) for the full env layout.
 
 ### Get the repo
 
@@ -147,13 +143,11 @@ build time (the Go modules are pinned by hash in `go.sum`; the proxy image
 | `r`    | pre-register                                       |
 | `R`    | `RequestTeeAttestation` (fresh on-chain challenge) |
 | `a`    | availability check                                 |
-| `p`    | to-production                                      |
-
-`R` (capital) is the load-bearing bit — it issues a fresh challenge on every
+| `p`    | to-production                                      | `R` (capital) is the load-bearing bit — it issues a fresh challenge on every
 run, so re-runs (image changes, diamond cuts, retries) don't revert with
 `Verification.ChallengeExpired`. Don't drop it.
 
-## ⚙️ Configuration files
+## Configuration files
 
 Keep canonical env files, never edit `.env` by hand:
 
@@ -162,9 +156,7 @@ Keep canonical env files, never edit `.env` by hand:
 | `.env.example` | Reference template with every variable + comments — start here on a fresh clone |
 | `.env.coston`  | Coston (chain_id 16) settings                                                   |
 | `.env.coston2` | Coston2 (chain_id 114) settings                                                 |
-| `.env`         | Whichever chain is currently active (overwritten by `use-chain.sh`)             |
-
-Switch active chain with:
+| `.env`         | Whichever chain is currently active (overwritten by `use-chain.sh`)             | Switch active chain with:
 
 ```powershell
 bash ./scripts/use-chain.sh coston2     # or: coston
@@ -202,7 +194,7 @@ These also go in `.env.coston` / `.env.coston2`:
 | `DEPLOYMENT_PRIVATE_KEY` | `0x…` (hex, no `0x` prefix) | Funded private key used by every deploy + register call. Must hold C2FLR on the target chain.                                                                                                                                                                                                                                                                                                                         |
 | `INITIAL_OWNER`          | `0x…` (40-hex)              | Address derived from `DEPLOYMENT_PRIVATE_KEY`. Becomes the extension owner.                                                                                                                                                                                                                                                                                                                                           |
 | `PROXY_PRIVATE_KEY`      | `0x…` (hex)                 | Funded key used **only by the local `ext-proxy`** (via `docker-compose.yaml` and `start-services.sh`). On the standard testnet flow where devops hosts the TEE + proxy, you can leave this as the default — devops's proxy uses devops's own key. Only matters if you bring up the local proxy for debugging, in which case it must be funded on the target chain. Can be the same value as `DEPLOYMENT_PRIVATE_KEY`. |
-| `REGISTRY`               | unset → `local`             | Docker image registry. Leave commented to use the locally-built `local/tee-proxy` image; set to a remote registry (e.g. a GCP Artifact Registry or GitHub Container Registry path) to pull instead.                                                                                                                                                                                                                  |
+| `REGISTRY`               | unset  `local`             | Docker image registry. Leave commented to use the locally-built `local/tee-proxy` image; set to a remote registry (e.g. a GCP Artifact Registry or GitHub Container Registry path) to pull instead.                                                                                                                                                                                                                  |
 
 ### Script-level overrides (not in `.env`)
 
@@ -221,7 +213,7 @@ These only matter when you're running the stack locally with `docker compose` �
 
 | Var                       | Default                             | Purpose                                                                                             |
 | ------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `MODE`                    | `1` (compose), `0` (baked in image) | Attestation backend — see [MODE / SIMULATED_TEE](#mode--simulated_tee--the-attestation-pair) below. |
+| `MODE`                    | `1` (compose), `0` (baked in image) | Attestation backend — see [MODE / SIMULATED_TEE](#mode-simulated_tee-the-attestation-pair) below. |
 | `LOG_LEVEL`               | `INFO`                              | `extension-tee` log verbosity.                                                                      |
 | `SOURCE_DATE_EPOCH`       | current commit timestamp            | Build arg for reproducible image builds — same source tree + same epoch = same `codeHash`.          |
 | `REDIS_BIND`              | `127.0.0.1:6382`                    | Host bind for the Redis container.                                                                  |
@@ -321,9 +313,7 @@ The chain-specific TOML is mounted into `ext-proxy` by a Compose overlay:
 | Overlay                       | Mounts                                | Sets                                                                  |
 | ----------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
 | `docker-compose.coston.yaml`  | `extension_proxy.coston.docker.toml`  | `CHAIN_URL` (Coston RPC), `COMPOSE_NETWORK=sign-coston`               |
-| `docker-compose.coston2.yaml` | `extension_proxy.coston2.docker.toml` | `CHAIN_URL` (Coston2 RPC)                                             |
-
-Run a chain-pinned local stack with:
+| `docker-compose.coston2.yaml` | `extension_proxy.coston2.docker.toml` | `CHAIN_URL` (Coston2 RPC)                                             | Run a chain-pinned local stack with:
 
 ```powershell
 docker compose -f docker-compose.yaml -f docker-compose.coston.yaml up -d
@@ -340,11 +330,9 @@ docker compose -f docker-compose.yaml -f docker-compose.coston.yaml up -d
 | Variable        | Where             | `0` / `false` (testnet)                               | `1` / `true` (local dev)                    |
 | --------------- | ----------------- | ----------------------------------------------------- | ------------------------------------------- |
 | `MODE`          | TEE binary env    | Real GCP Confidential Space JWT                       | Hardcoded simulated attestation             |
-| `SIMULATED_TEE` | `.env` (scripts)  | `register-tee` reads real codeHash from proxy `/info` | `register-tee` uses hardcoded test codeHash |
+| `SIMULATED_TEE` | `.env` (scripts)  | `register-tee` reads real codeHash from proxy `/info` | `register-tee` uses hardcoded test codeHash | The Dockerfile bakes `MODE=0`; `docker-compose.yaml` overrides to `MODE=1` for local devnet only.
 
-The Dockerfile bakes `MODE=0`; `docker-compose.yaml` overrides to `MODE=1` for local devnet only.
-
-## 📦 Building the Docker image for devops
+## Building the Docker image for devops
 
 Devops runs the extension on a GCP Confidential Space VM. They need the image.
 
@@ -391,7 +379,7 @@ docker inspect sign-extension-go:v0.1.0 --format '{{range .Config.Env}}{{println
 > docker push <registry>/<repo>:v0.1.0
 > ```
 
-## 🤝 Devops responsibilities
+## Devops responsibilities
 
 > [!NOTE]
 > Devops contact for deploying this extension: **Aljaž Konečnik**.
@@ -406,9 +394,7 @@ Devops deploys the image on a **GCP Confidential Space VM** with:
 | `CHAIN_URL`           | the right chain's RPC                                                                                                           |
 | `PROXY_URL`           | the proxy reachable from the TEE                                                                                                |
 | `ext-proxy` container | runs with the right `extension_proxy.<chain>.docker.toml` (Coston/Coston2 indexer DB credentials, contract addresses, chain_id) |
-| Public HTTPS URL      | routed to port `6664` of the proxy — devops gives you this URL                                                                  |
-
-> [!IMPORTANT]
+| Public HTTPS URL      | routed to port `6664` of the proxy — devops gives you this URL                                                                  | > [!IMPORTANT]
 > **`EXTENSION_ID` is a container env_override, not a baked-in value.** The Dockerfile carries `LABEL "tee.launch_policy.allow_env_override"="LOG_LEVEL,PROXY_URL,INITIAL_OWNER,EXTENSION_ID,CHAIN_URL,MODE,CONFIG_PORT,SIGN_PORT,EXTENSION_PORT"`. Any var in that list can be set at workload launch on the Confidential Space VM. **Changing `EXTENSION_ID` does not require a new image** — devops just restarts the container with the new value. Vars outside this list are pinned by the attestation and require a rebuild + re-whitelist to change.
 
 When devops is up, their `/info` should look like:
@@ -428,7 +414,7 @@ When devops is up, their `/info` should look like:
 > [!CAUTION]
 > If any of those still show the simulated values, the TEE is running in `MODE=1` and won't pass FTDC.
 
-### 📤 Devops handoff checklist
+### Devops handoff checklist
 
 When you hand a new deployment off to devops, send them this exact set of artifacts. Anything missing turns into a back-and-forth.
 
@@ -439,10 +425,8 @@ When you hand a new deployment off to devops, send them this exact set of artifa
 | `INITIAL_OWNER`                     | derived from your `DEPLOYMENT_PRIVATE_KEY`         | `0xaAb2B5619F7c11C72947913B584b8BFec5654Df5`                                             |
 | `CHAIN_URL`                         | from `.env.<chain>`                                | `https://coston2-api.flare.network/ext/C/rpc`                                            |
 | Chain-specific proxy TOML           | `config/proxy/extension_proxy.<chain>.docker.toml` | mount into `ext-proxy` at `/app/config/config.toml`                                      |
-| Required port routing               | public HTTPS → port `6664` of the proxy container  | devops returns the public URL                                                            |
-| Required image env                  | `MODE=0` (baked), plus the overrides above         | devops sets `EXTENSION_ID`, `INITIAL_OWNER`, `CHAIN_URL`, `PROXY_URL` at workload launch |
-
-> [!NOTE]
+| Required port routing               | public HTTPS  port `6664` of the proxy container  | devops returns the public URL                                                            |
+| Required image env                  | `MODE=0` (baked), plus the overrides above         | devops sets `EXTENSION_ID`, `INITIAL_OWNER`, `CHAIN_URL`, `PROXY_URL` at workload launch | > [!NOTE]
 > **`INSTRUCTION_SENDER` is _not_ on this list.** It's the on-chain contract address users call to send instructions; devops's TEE binary never reads it (not in the launch_policy LABEL). Keep it in your local `config/extension.env` for `test.sh` and your own contract interactions.
 
 Devops returns:
@@ -471,9 +455,7 @@ Expected values:
 | `platform`     | `0x4743505f414d445f534556…` (i.e. `GCP_AMD_SEV` ASCII-hex)                           | TEE running in `MODE=1` — ask devops to redeploy with `MODE=0`.       |
 | `codeHash`     | matches the codeHash you'd get by inspecting your built image; **not** `0x194844cf…` | Image is the simulated/test build. Rebuild with `MODE=0`.             |
 | `extensionId`  | matches your `config/extension.env` `EXTENSION_ID`                                   | Devops hasn't restarted the container with the new value (Step 11).   |
-| `initialOwner` | matches your derived `INITIAL_OWNER`                                                 | Devops set the wrong owner — they need to restart with the right env. |
-
-To verify the JWT's `env_override` block (which is what the Confidential Space VM actually saw at launch), decode the `attestation` field's payload:
+| `initialOwner` | matches your derived `INITIAL_OWNER`                                                 | Devops set the wrong owner — they need to restart with the right env. | To verify the JWT's `env_override` block (which is what the Confidential Space VM actually saw at launch), decode the `attestation` field's payload:
 
 ```bash
 curl -s "$EXT_PROXY_URL/info" \
@@ -485,7 +467,7 @@ curl -s "$EXT_PROXY_URL/info" \
 
 This should print the env vars devops actually passed at workload launch — `EXTENSION_ID`, `INITIAL_OWNER`, `PROXY_URL`, etc. Use it to confirm Step 11 took effect.
 
-## 🚀 Deployment flow
+## Deployment flow
 
 ### Scripts at a glance
 
@@ -498,9 +480,7 @@ This should print the env vars devops actually passed at workload launch — `EX
 | `stop-services.sh`                | Tears down the local Docker stack.                                                                                                                                                                                   |
 | `post-build.sh`                   | `allow-tee-version` + `register-tee` against the chosen proxy.                                                                                                                                                       |
 | `test.sh`                         | End-to-end test (`UPDATE`, `SIGN`).                                                                                                                                                                                  |
-| `full-setup.sh`                   | Runs `pre-build` → `start-services` → `post-build` → optionally `test` in one shot. Also fires `extension-setup.sh` (Phase 1.5) and `extension-post-setup.sh` (Phase 3.5) if those scripts exist and are executable. |
-
-> [!CAUTION]
+| `full-setup.sh`                   | Runs `pre-build`  `start-services`  `post-build`  optionally `test` in one shot. Also fires `extension-setup.sh` (Phase 1.5) and `extension-post-setup.sh` (Phase 3.5) if those scripts exist and are executable. | > [!CAUTION]
 > **Diamond-cut redeploys wipe extension registrations.** When the Flare team redeploys the `FlareTeeManager` diamond on a chain (see e.g. commit `bdb7c80 Updated coston2 deployment with new diamond-cut addresses`), all previously-registered extensions disappear from the registry. You must re-run `pre-build.sh` to register the extension on the new diamond — and **`Register()` auto-mints the next available ID**, which won't match the ID devops's container is currently using. Send only the new `EXTENSION_ID` to devops so they can restart the container with the updated env (no image rebuild needed — `EXTENSION_ID` is in the launch_policy override list). `INSTRUCTION_SENDER` stays in your local `config/extension.env` — devops doesn't need it. Only after the container restart does `post-build.sh` succeed.
 
 Once devops has the proxy live and your `.env.<chain>` is configured, choose one of:
@@ -543,7 +523,7 @@ bash ./scripts/test.sh
 ### Expected output
 
 <details>
-<summary><strong>✅ Successful <code>post-build</code></strong></summary>
+<summary><strong>Successful <code>post-build</code></strong></summary>
 
 ```text
 [post-build] Extension proxy: https://tee-proxy-coston-pm.flare.rocks
@@ -568,7 +548,7 @@ The "availability check proof obtained" line is the FTDC quorum confirming your 
 </details>
 
 <details>
-<summary><strong>✅ Successful <code>test.sh</code></strong></summary>
+<summary><strong>Successful <code>test.sh</code></strong></summary>
 
 ```text
 Step 3: Sending updateKey instruction on-chain...
@@ -581,7 +561,7 @@ All tests passed.
 
 </details>
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 Expand the entry that matches your error.
 
@@ -617,9 +597,7 @@ bash ./scripts/start-services.sh --chain coston
 | Chain   | Correct host                      |
 | ------- | --------------------------------- |
 | Coston  | `tee-proxy-coston-1.flare.rocks`  |
-| Coston2 | `tee-proxy-coston2-1.flare.rocks` |
-
-Fix `.env.<chain>` and re-run.
+| Coston2 | `tee-proxy-coston2-1.flare.rocks` | Fix `.env.<chain>` and re-run.
 
 </details>
 
@@ -635,7 +613,7 @@ TEE machine is already registered on-chain but `register-tee` skipped attestatio
 
 **This is now guarded.** `ToProduction` in `fccutils/registration.go` first reads the on-chain TEE status and, if it's already `PRODUCTION`, logs `already in production, skipping` and returns instead of reverting — so re-running `post-build.sh` is safe. You'll only hit the raw `execution reverted` from `toProduction(...)` on an older build without the guard.
 
-**Why it happens:** the contract's state machine is one-way (`REGISTERED → PRODUCTION`), so re-calling `toProduction(...)` on a TEE already in production reverts.
+**Why it happens:** the contract's state machine is one-way (`REGISTERED  PRODUCTION`), so re-calling `toProduction(...)` on a TEE already in production reverts.
 
 **Confirm it's benign:** run `bash ./scripts/test.sh`. If the `UPDATE` / `SIGN` round-trip passes (recovered signer matches the expected signer), the deployment is healthy.
 
@@ -648,7 +626,7 @@ If `test.sh` also fails, see *Want a clean re-registration of the TEE machine* b
 
 `allow-tee-version` is trying to whitelist a codeHash for an extension that either doesn't exist on the active diamond or isn't owned by the caller.
 
-**Most common cause:** the `FlareTeeManager` diamond was redeployed (see the diamond-cut callout in [Deployment flow](#-deployment-flow)) and your extension hasn't been re-registered on it. Verify by querying `getExtensionOwner(<id>)`:
+**Most common cause:** the `FlareTeeManager` diamond was redeployed (see the diamond-cut callout in [Deployment flow](#deployment-flow)) and your extension hasn't been re-registered on it. Verify by querying `getExtensionOwner(<id>)`:
 
 ```powershell
 # Example for Coston2 — replace <ID> with your extension ID in 64-hex form
@@ -698,7 +676,7 @@ The FTDC normal-proxy hasn't recorded your availability-check instruction. Most 
 
 The proxy is reporting an older `extensionId` than the one `pre-build.sh` just minted. The fix differs by flow:
 
-**Testnet (devops-hosted TEE + proxy).** Devops hasn't restarted their container with the new `EXTENSION_ID` env override yet. Send them the new value from `config/extension.env` and ask them to restart the container — see Step 11 in the [first-time deployment checklist](#%EF%B8%8F-first-time-deployment-checklist). Running `stop-services.sh` / `full-setup.sh` locally does **not** help: those touch only your local Docker stack, not devops's hosted containers.
+**Testnet (devops-hosted TEE + proxy).** Devops hasn't restarted their container with the new `EXTENSION_ID` env override yet. Send them the new value from `config/extension.env` and ask them to restart the container — see Step 11 in the [first-time deployment checklist](#first-time-deployment-checklist). Running `stop-services.sh` / `full-setup.sh` locally does **not** help: those touch only your local Docker stack, not devops's hosted containers.
 
 **Local devnet.** Local `extension-tee` was restarted with a new `EXTENSION_ID` but the local `ext-proxy` is still serving cached info. Full reset:
 
@@ -716,7 +694,7 @@ Cosmetic. The Go tools also look for an `.env` in the current working directory 
 
 </details>
 
-## 🔄 Re-deployment after image updates
+## Re-deployment after image updates
 
 Whenever the extension code or Dockerfile changes:
 
@@ -730,25 +708,23 @@ Whenever the extension code or Dockerfile changes:
 > [!NOTE]
 > If devops keeps the **same** TEE keypair across redeploys, the pre-registration step is skipped (the address is already known). If they generate a new keypair, `register-tee` performs full pre-registration again.
 
-## 🧹 Lifecycle & decommissioning
+## Lifecycle & decommissioning
 
 Extension IDs are **permanent** — once `Register()` mints an ID, the diamond has no `removeExtension` / `retireExtension` primitive. What you _can_ do, all callable from the extension owner:
 
 | Operation               | Call                                                                                       | Effect                                                                          |
 | ----------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| Transfer ownership      | `proposeNewOwner(extensionId, newOwner)` → recipient calls `confirmOwnership(extensionId)` | 2-step transfer to a new owner                                                  |
+| Transfer ownership      | `proposeNewOwner(extensionId, newOwner)`  recipient calls `confirmOwnership(extensionId)` | 2-step transfer to a new owner                                                  |
 | Retire a specific build | `disableCodeHashPlatform(extensionId, codeHash, platform)`                                 | Subsequent attestations matching that `(codeHash, platform)` pair are rejected  |
-| Re-point contracts      | `setExtensionContracts(...)`                                                               | Re-target the extension to a redeployed `InstructionSender` / state verifier    |
+| Re-point contracts      | `setExtensionContracts(...)`                                                               | Re-target the extension to a redeployed `InstructionSender` / state verifier    | See the `ExtensionManager` ABI in `tools/pkg/contracts/` for the full surface. No script wrappers exist in the scaffold yet — invoke with `cast send` or a one-off Go tool.
 
-See the `ExtensionManager` ABI in `tools/pkg/contracts/` for the full surface. No script wrappers exist in the scaffold yet — invoke with `cast send` or a one-off Go tool.
-
-## 📚 Reference: working configuration
+## Reference: working configuration
 
 Last updated **2026-05-27**:
 
-|                 | Coston                                       | Coston2                                                                     |
+| | Coston                                       | Coston2                                                                     |
 | --------------- | -------------------------------------------- | --------------------------------------------------------------------------- |
-| Status          | ✅ Verified working 2026-05-14               | ✅ Verified working 2026-05-27 (Go + Python slim, diamond-cut `bdb7c80`)    |
+| Status          | Verified working 2026-05-14               | Verified working 2026-05-27 (Go + Python slim, diamond-cut `bdb7c80`)    |
 | Chain ID        | 16                                           | 114                                                                         |
 | `tee-node` ref  | v0.0.20 (Go module + image clone)            | v0.0.20                                                                     |
 | `tee-proxy` ref | v0.0.17 (Go module) · `main` (proxy image)   | same                                                                        |
@@ -757,7 +733,7 @@ Last updated **2026-05-27**:
 | `SIMULATED_TEE` | `false`                                      | `false`                                                                     |
 | FlareTeeManager | `0xb7DeFeCfe34f378652Ca5DceB2bF1c01604DEA09` | `0x004224fa1BF1Acd3D233f011FB03b8dd5fA5d41F` (diamond-cut commit `bdb7c80`) |
 
-## 🔗 Related docs
+## Related docs
 
 | Doc                                            | What it covers                                                   |
 | ---------------------------------------------- | ---------------------------------------------------------------- |
@@ -765,10 +741,8 @@ Last updated **2026-05-27**:
 | [`ops.md`](ops.md)                             | Layout, language selection, local devnet flow, scripts overview  |
 | [`DEPLOYMENT_STEPS.md`](DEPLOYMENT_STEPS.md)   | The concise linear deploy recipe (step-by-step)                  |
 | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md)     | `SOURCE_DATE_EPOCH`, build context, and reproducible image builds |
-| [`go/`](go/)                                    | Go extension source (the only language this submission deploys) |
+| [`go/`](go/)                                    | Go extension source (the only language this submission deploys) | <div align="center">
 
-<div align="center">
-
-[← Back to README](README.md)
+[ Back to README](README.md)
 
 </div>

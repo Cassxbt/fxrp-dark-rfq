@@ -9,28 +9,17 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-/// @dev Minimal Flare FTSOv2 feed-read interface. Feed id for Coston2 XRP/USD
-/// must be confirmed live before this bound is enabled — see docs/TRUST.md.
+/// @dev Minimal FTSOv2 feed-read interface.
 interface IFtsoV2 {
     function getFeedById(bytes21 feedId) external view returns (uint256 value, int8 decimals, uint64 timestamp);
 }
 
 /// @title RfqSettlement
-/// @notice Atomic settlement for a sealed-bid FXRP/quoteToken RFQ matched off-chain
-///         inside a Flare Confidential Compute TEE extension. Full trust model,
-///         threat model, and disclosed limitations: see docs/TRUST.md.
-///
-/// @dev Trust model, stated plainly:
-///      - This contract verifies only the TEE's own attestation signature over `Fill`.
-///        Taker/maker intent signatures (`RfqIntent`, `Quote`) are verified off-chain,
-///        inside the Go extension, and are NOT re-checked here — a deliberate scope
-///        choice under the SIMULATED_TEE trust model, not an oversight.
-///      - `isAttestedSigner` is an MVP owner-controlled allowlist. Production would
-///        check the signer against a live TeeExtensionRegistry instead; that
-///        registry's exact ABI is unconfirmed against the deployed scaffold as of
-///        this commit — do not assume this is the final integration point.
-///      - Holds no funds. Settlement is `transferFrom`-based and best-effort, not a
-///        binding commitment.
+/// @notice Atomic settlement for a sealed-bid RFQ matched off-chain inside a Flare
+///         Confidential Compute TEE extension.
+/// @dev Verifies only the TEE's attestation over `Fill`; `RfqIntent` and `Quote`
+///      are checked in the extension and deliberately not re-checked here. Holds no
+///      funds — settlement is transferFrom-based and can fail. See docs/TRUST.md.
 contract RfqSettlement is EIP712, Ownable {
     using SafeERC20 for IERC20;
     using ECDSA for bytes32;
@@ -53,22 +42,20 @@ contract RfqSettlement is EIP712, Ownable {
     bytes32 private constant FILL_TYPEHASH =
         keccak256("Fill(bytes32 rfqId,address taker,address maker,uint8 side,uint256 size,uint256 price,uint256 expiry)");
 
-    /// @notice FXRP (or whatever base asset this deployment settles), registry-resolved
-    /// at deploy time — never a hardcoded/guessed address.
+    /// @notice Base asset, registry-resolved at deploy time.
     IERC20 public immutable baseToken;
 
     /// @notice The quote asset for this deployment (USDT0 on Coston2).
     IERC20 public immutable quoteToken;
 
-    /// @notice Optional FTSO price bound. Zero address disables it (the default —
-    /// tests that don't want to depend on a live feed, and the current live
-    /// deployment, both leave this unset; see docs/TRUST.md).
+    /// @notice Optional FTSO price bound. Unset on the live deployment, which
+    /// disables the check entirely.
     IFtsoV2 public ftso;
     bytes21 public ftsoFeedId;
     uint256 public ftsoToleranceBps; // e.g. 1000 = 10%
     uint256 public ftsoMaxStaleness; // seconds
 
-    /// @dev MVP placeholder for the real TeeExtensionRegistry check — see contract-level NatSpec.
+    /// @dev Owner allowlist, standing in for a TeeExtensionRegistry check.
     mapping(address => bool) public isAttestedSigner;
 
     mapping(bytes32 => bool) public settled;
@@ -116,8 +103,8 @@ contract RfqSettlement is EIP712, Ownable {
         return _hashTypedDataV4(structHash);
     }
 
-    /// @notice Settle a matched RFQ. Reverts (not silently no-ops) on every failure
-    /// path so the frontend can surface a specific reason.
+    /// @notice Settle a matched RFQ. Reverts on every failure path so callers can
+    /// surface a specific reason.
     function settle(Fill calldata fill, bytes calldata attestationSig) external {
         if (settled[fill.rfqId]) revert AlreadySettled(fill.rfqId);
         if (block.timestamp > fill.expiry) revert Expired(fill.expiry, block.timestamp);
@@ -131,20 +118,14 @@ contract RfqSettlement is EIP712, Ownable {
 
         uint8 quoteDecimals = IERC20Metadata(address(quoteToken)).decimals();
         uint8 baseDecimals = IERC20Metadata(address(baseToken)).decimals();
-        // fill.size * fill.price must not be computed as a plain checked-arithmetic
-        // argument — that multiplication alone can overflow-revert before mulDiv ever
-        // runs, defeating the point. Scaling fill.price by
-        // 10**quoteDecimals first is safe in comparison: quoteDecimals is a small
-        // token-metadata value (6-18), not an attacker-influenced multiplicand, so
-        // mulDiv's own protected size*scaledPrice multiplication is what actually
-        // guards against overflow from an oversized fill.size or fill.price.
+        // size * price must happen inside mulDiv: as a plain argument it can
+        // overflow-revert before mulDiv's guard ever runs. Scaling price by the
+        // small token-metadata exponent first is safe.
         uint256 quoteAmount =
             Math.mulDiv(fill.size, fill.price * (10 ** quoteDecimals), (10 ** baseDecimals) * 1e18);
 
-        // Defense-in-depth against a degenerate Fill (buggy/compromised attested
-        // signer — the contract otherwise trusts it fully per the disclosed trust
-        // model). Floor division can zero out quoteAmount for a tiny price while
-        // `size` still transfers in full. size==0 is symmetric nonsense.
+        // Floor division can zero quoteAmount for a tiny price while size still
+        // transfers in full. The signer is otherwise trusted completely.
         if (fill.size == 0 || quoteAmount == 0) revert ZeroAmount(fill.size, quoteAmount);
 
         (address baseFrom, address baseTo, address quoteFrom, address quoteTo) = fill.side == Side.TakerBuy
@@ -157,9 +138,7 @@ contract RfqSettlement is EIP712, Ownable {
         emit Filled(fill.rfqId, fill.taker, fill.maker, fill.side, fill.size, fill.price);
     }
 
-    /// @dev 10% tolerance (2% was too tight for a 60-120s intent expiry window),
-    /// plus a staleness check. Skipped entirely if `ftso` is unset — the current
-    /// live deployment leaves it unset; see docs/TRUST.md.
+    /// @dev 10% tolerance; 2% proved too tight for a 60-120s expiry window.
     function _checkFtsoBound(uint256 price) internal view {
         if (address(ftso) == address(0)) return;
 
