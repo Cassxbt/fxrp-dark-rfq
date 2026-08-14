@@ -16,7 +16,7 @@
 // It also keeps the tunnel URL out of the client bundle, so rotating the
 // tunnel is an env change rather than a rebuild.
 
-const EXT_ORIGIN = process.env.EXT_PROXY_ORIGIN ?? "https://2971-102-89-68-144.ngrok-free.app";
+const EXT_ORIGIN = process.env.EXT_PROXY_ORIGIN ?? "https://unappliably-unphased-josef.ngrok-free.dev";
 
 async function forward(req: Request, path: string[]) {
   const url = new URL(req.url);

@@ -86,9 +86,12 @@ requests go through a server-side route (`app/api/ext/[...path]`) that forwards
 them. The tunnel URL is the `EXT_PROXY_ORIGIN` env var, not baked into the
 bundle.
 
-Practically: opening or quoting needs that machine awake and three funded
-Coston2 wallets. If the app reports the extension unreachable, the tunnel is
-down and nothing about the fill above changes. Running it locally is the same
+The tunnel address is stable (a reserved ngrok domain), so it survives
+restarts — but the enclave itself does not run in the cloud. Opening or quoting
+needs that machine awake, with Docker and the tunnel up, plus three funded
+Coston2 wallets. If the app reports the extension unreachable, that is what
+happened, and nothing about the fills above changes: they are settled on a
+public chain and stay checkable regardless. Running it locally is the same
 picture — `cd frontend && npm install && npm run dev`.
 
 Driving it: the taker opens (approve, sign) and gets an RFQ ID to hand to
