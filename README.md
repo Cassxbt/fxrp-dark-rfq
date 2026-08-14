@@ -10,6 +10,15 @@ Built for [Flare Summer Signal](https://dorahacks.io/hackathon/flaresummersignal
 — Bounty 2 (Confidential Compute) primary, Bounty 1 (Interoperable Assets / FXRP)
 as integration proof.
 
+## Proof of a real fill
+
+[`0xe158ffe7...a7a8e9`](https://coston2-explorer.flare.network/tx/0xe158ffe70bd1df2790ca3bc09c501cf214f6c7a7406872882361698551a7a8e9) —
+a taker buying 1 FXRP, two makers quoting 2.95 and 2.99 USDT0, the TEE
+selecting the cheaper of the two, and both ERC-20 legs settling atomically.
+Produced by `frontend/scripts/e2e-demo.mts`, which drives the real
+`lib/eip712.ts` / `lib/rfqClient.ts` / `lib/quoteAmount.ts` the UI itself
+calls — not a reimplementation.
+
 ## What's deployed
 
 - **RfqSettlement contract (Coston2):** [`0xaBf47C48c00DDa806f1d9243c936A8153C7E6FcE`](https://coston2-explorer.flare.network/address/0xaBf47C48c00DDa806f1d9243c936A8153C7E6FcE)
@@ -29,8 +38,12 @@ as integration proof.
    TEE. Quotes are matching signals, not on-chain commitments — nothing is
    escrowed at quote time.
 3. Taker (or anyone — see Known limitations) **closes** the RFQ. The extension
-   picks the winning quote inside the TEE, checked against the taker's limit
-   and an FTSO price bound, and submits a signed `Fill` to the contract.
+   picks the winning quote inside the TEE, checked against the taker's limit,
+   and submits a signed `Fill` to the contract. The contract also supports an
+   optional FTSO price-bound check (owner-configurable, covered by 3 passing
+   tests) — **it is not enabled on the current deployment** (`ftso()` reads as
+   unset), so no fill has been oracle-checked yet. Don't read this deployment
+   as having a live price guard.
 4. The contract verifies the TEE's attestation signature and settles the
    ERC-20 transfer atomically. A `Filled` event is the only public trace of
    the trade — no losing quotes, no rejected intents, no maker identities
@@ -56,8 +69,11 @@ The extension and proxy are already running against Coston2; `EXT_PROXY_URL` in
 
 ## Trust model and known limitations
 
-Full design rationale: [`BUILD-SPEC.md`](./BUILD-SPEC.md).
-
+- **No FTSO price bound is active on this deployment.** The contract supports
+  one (owner-configurable, tested), but it was never turned on — `ftso()`
+  reads as the zero address, and `_checkFtsoBound` short-circuits when unset.
+  Every fill, including the one linked below, settled on the taker's limit
+  and the maker's quote only, with no oracle check.
 - **Simulated TEE, not hardware-attested.** This deployment runs FCC's
   officially-sanctioned simulated mode. The signer key's trustworthiness rests
   on the extension process, not a hardware attestation chain.

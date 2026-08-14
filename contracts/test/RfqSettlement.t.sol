@@ -98,6 +98,45 @@ contract RfqSettlementTest is Test {
         assertEq(musd.balanceOf(taker), takerMusdBefore + 2e18, "taker should receive exactly 2.00 mUSD");
     }
 
+    /// The rest of this suite uses a 6/18 pair (FXRP/mUSD). Production is 6/6
+    /// (FXRP/USDT0, both confirmed via cast call) — a judge running `forge test`
+    /// should see the real token shape covered, not just the historical mock pair
+    /// (audit finding). Mirrors the actual funded fill: 1 FXRP @ 2.95 USDT0.
+    function test_TakerBuy_SixAndSix_MatchesLiveFillShape() public {
+        MockERC20 usdt0 = new MockERC20("Mock USDT0", "USDT0", 6);
+        RfqSettlement rfq6 = new RfqSettlement(fxrp, usdt0, owner);
+        vm.prank(owner);
+        rfq6.setAttestedSigner(signer, true);
+
+        usdt0.mint(taker, 100e6);
+        vm.prank(taker);
+        usdt0.approve(address(rfq6), type(uint256).max);
+        vm.prank(maker);
+        fxrp.approve(address(rfq6), type(uint256).max);
+
+        RfqSettlement.Fill memory fill = RfqSettlement.Fill({
+            rfqId: keccak256("rfq-six-and-six"),
+            taker: taker,
+            maker: maker,
+            side: RfqSettlement.Side.TakerBuy,
+            size: 1e6, // 1 FXRP, 6 decimals
+            price: 2.95e18, // WAD price, matches the on-chain fill exactly
+            expiry: block.timestamp + 120
+        });
+
+        bytes32 digest = rfq6.hashFill(fill);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
+        bytes memory sig = abi.encodePacked(r, s, v);
+
+        uint256 takerFxrpBefore = fxrp.balanceOf(taker);
+        uint256 makerUsdt0Before = usdt0.balanceOf(maker);
+
+        rfq6.settle(fill, sig);
+
+        assertEq(fxrp.balanceOf(taker), takerFxrpBefore + 1e6, "taker should receive exactly 1 FXRP");
+        assertEq(usdt0.balanceOf(maker), makerUsdt0Before + 2_950_000, "maker should receive exactly 2.95 USDT0 (6dp), matching the live tx");
+    }
+
     function test_RevertsOnReplay() public {
         RfqSettlement.Fill memory fill = RfqSettlement.Fill({
             rfqId: keccak256("rfq-replay"),

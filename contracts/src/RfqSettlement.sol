@@ -133,9 +133,15 @@ contract RfqSettlement is EIP712, Ownable {
 
         uint8 quoteDecimals = IERC20Metadata(address(quoteToken)).decimals();
         uint8 baseDecimals = IERC20Metadata(address(baseToken)).decimals();
-        // Math.mulDiv guards the intermediate size*price multiplication against
-        // overflow, rather than re-deriving that safety by hand (round-2 review finding).
-        uint256 quoteAmount = Math.mulDiv(fill.size * fill.price, 10 ** quoteDecimals, (10 ** baseDecimals) * 1e18);
+        // fill.size * fill.price must not be computed as a plain checked-arithmetic
+        // argument — that multiplication alone can overflow-revert before mulDiv ever
+        // runs, defeating the point (audit finding). Scaling fill.price by
+        // 10**quoteDecimals first is safe in comparison: quoteDecimals is a small
+        // token-metadata value (6-18), not an attacker-influenced multiplicand, so
+        // mulDiv's own protected size*scaledPrice multiplication is what actually
+        // guards against overflow from an oversized fill.size or fill.price.
+        uint256 quoteAmount =
+            Math.mulDiv(fill.size, fill.price * (10 ** quoteDecimals), (10 ** baseDecimals) * 1e18);
 
         // Defense-in-depth against a degenerate Fill (buggy/compromised attested
         // signer — the contract otherwise trusts it fully per the disclosed trust
