@@ -108,7 +108,7 @@ export default function MakerPage() {
       <main className="mx-auto w-full max-w-5xl px-5 py-8">
         <div className="mb-7">
           <h1 className="text-[19px] font-semibold tracking-tight text-ink">Quote an RFQ</h1>
-          <p className="mt-1 text-[12.5px] text-faint">
+          <p className="mt-1 text-[12px] text-faint">
             You are pricing blind: the taker&apos;s limit and every competing quote stay inside the enclave.
           </p>
         </div>
@@ -126,7 +126,7 @@ export default function MakerPage() {
                   value={rfqId}
                   onChange={setRfqId}
                   placeholder="0x…"
-                  hint={<span className="text-[10px] text-faint">from the taker</span>}
+                  hint={<span className="text-[11px] text-faint">from the taker</span>}
                 />
 
                 <div>
@@ -143,7 +143,7 @@ export default function MakerPage() {
                 <Field label="Size" value={rfqSize} onChange={setRfqSize} suffix="FXRP" />
                 <Field label="Your price" value={price} onChange={setPrice} suffix="USDT0" />
 
-                <p className="border-l border-accent-dim pl-3 text-[11.5px] leading-relaxed text-faint">
+                <p className="border-l border-accent-dim pl-3 text-[12px] leading-relaxed text-faint">
                   {rfqSide === "buy"
                     ? `You sell ${rfqSize || "0"} FXRP if you win. Lowest qualifying price wins.`
                     : `You pay USDT0 for ${rfqSize || "0"} FXRP if you win. Highest qualifying price wins.`}
@@ -158,7 +158,7 @@ export default function MakerPage() {
             <div className="space-y-5">
               <Panel title="Status">
                 {!status ? (
-                  <p className="px-4 py-9 text-center text-[12.5px] text-faint">
+                  <p className="px-4 py-9 text-center text-[12px] text-faint">
                     No quote submitted yet.
                   </p>
                 ) : (
@@ -169,7 +169,7 @@ export default function MakerPage() {
                       }`}
                     />
                     <p
-                      className={`text-[12.5px] leading-relaxed ${
+                      className={`text-[12px] leading-relaxed ${
                         failed ? "text-negative" : submitted ? "text-ink" : "text-muted"
                       }`}
                     >
@@ -180,7 +180,7 @@ export default function MakerPage() {
               </Panel>
 
               <Panel title="What the enclave does with this">
-                <ol className="divide-y divide-line px-4 text-[12.5px] text-faint">
+                <ol className="divide-y divide-line px-4 text-[12px] text-faint">
                   {[
                     "Recovers your address from the signature — a quote can't be filed under someone else's name.",
                     "Holds it sealed. The taker never sees your price unless you win.",

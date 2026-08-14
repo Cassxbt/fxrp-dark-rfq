@@ -31,6 +31,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Type scale — seven roles, no in-between sizes. Half-pixel steps like 11.5
+   and 13.5 are decisions nobody made; if a size isn't on this list it should
+   not appear in a class.
+     11  micro — eyebrows, table headers, meta
+     12  secondary — captions, notes, table values
+     13  body — UI text, buttons, nav
+     14  lede — section intros, hero paragraph, input values
+     19  page title
+     24  section heading, large numeric display
+     34/42 hero display (one role, responsive) */
+
 /* Numbers must not shift width as they update. */
 .tnum {
   font-variant-numeric: tabular-nums;

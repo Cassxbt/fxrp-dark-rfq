@@ -204,7 +204,7 @@ export default function TakerPage() {
         <div className="mb-7 flex items-end justify-between gap-4">
           <div>
             <h1 className="text-[19px] font-semibold tracking-tight text-ink">Open an RFQ</h1>
-            <p className="mt-1 text-[12.5px] text-faint">
+            <p className="mt-1 text-[12px] text-faint">
               Your limit price is sealed to the enclave. Makers price the trade without seeing it.
             </p>
           </div>
@@ -236,7 +236,7 @@ export default function TakerPage() {
                   onChange={setLimitPrice}
                   suffix="USDT0"
                   hint={
-                    <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-accent">
+                    <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.1em] text-accent">
                       <svg viewBox="0 0 10 12" className="h-2.5 w-2.5 fill-none stroke-current" strokeWidth="1.3">
                         <rect x="0.65" y="5" width="8.7" height="6.35" rx="1" />
                         <path d="M2.6 5V3.1a2.4 2.4 0 0 1 4.8 0V5" />
@@ -246,7 +246,7 @@ export default function TakerPage() {
                   }
                 />
 
-                <p className="border-l border-accent-dim pl-3 text-[11.5px] leading-relaxed text-faint">
+                <p className="border-l border-accent-dim pl-3 text-[12px] leading-relaxed text-faint">
                   {side === "buy"
                     ? `Approves at most ${limitPrice || "0"} USDT0 per FXRP — never max uint. You fill at the best maker price at or below your limit.`
                     : `Approves exactly ${size || "0"} FXRP. You fill at the best maker price at or above your limit.`}
@@ -272,7 +272,7 @@ export default function TakerPage() {
                 }
               >
                 {!rfqId ? (
-                  <p className="px-4 py-9 text-center text-[12.5px] text-faint">
+                  <p className="px-4 py-9 text-center text-[12px] text-faint">
                     No open RFQ. Submit the ticket to seal an intent.
                   </p>
                 ) : (
@@ -281,7 +281,7 @@ export default function TakerPage() {
                       Send this to your makers — there is no public listing to discover it.
                     </p>
                     <div className="flex items-stretch border border-line bg-base">
-                      <code className="min-w-0 flex-1 truncate px-3 py-2.5 font-mono text-[11.5px] text-ink">
+                      <code className="min-w-0 flex-1 truncate px-3 py-2.5 font-mono text-[12px] text-ink">
                         {shareLine}
                       </code>
                       <button

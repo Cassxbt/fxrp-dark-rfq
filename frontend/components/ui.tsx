@@ -90,7 +90,7 @@ export function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full bg-transparent px-3 py-2.5 text-[15px] text-ink outline-none ${mono ? "font-mono tnum" : ""}`}
+          className={`w-full bg-transparent px-3 py-2.5 text-[14px] text-ink outline-none ${mono ? "font-mono tnum" : ""}`}
         />
         {/* Mono so USDT0's trailing zero doesn't read as the letter O. */}
         {suffix && <span className="shrink-0 pr-3 font-mono text-[12px] text-faint">{suffix}</span>}

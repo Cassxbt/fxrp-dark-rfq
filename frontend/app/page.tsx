@@ -56,7 +56,7 @@ export default function Home() {
         <header className="sticky top-0 z-10 flex h-14 items-center gap-2.5 border-b border-line bg-base/85 backdrop-blur">
           <span className="h-2.5 w-2.5 rounded-[2px] bg-accent" />
           <span className="text-[13px] font-semibold tracking-tight">FXRP Dark RFQ</span>
-          <nav className="ml-6 hidden gap-4 text-[12.5px] text-faint sm:flex">
+          <nav className="ml-6 hidden gap-4 text-[12px] text-faint sm:flex">
             <a href="#how" className="transition-colors duration-150 hover:text-ink">How it works</a>
             <a href="#visibility" className="transition-colors duration-150 hover:text-ink">Who sees what</a>
             <a href="#trust" className="transition-colors duration-150 hover:text-ink">Trust model</a>
@@ -157,7 +157,7 @@ export default function Home() {
             ].map((c) => (
               <div key={c.h} className="bg-base px-5 py-6">
                 <h3 className={`text-[14px] font-medium ${c.good ? "text-accent" : "text-ink"}`}>{c.h}</h3>
-                <p className="mt-2.5 text-[12.5px] leading-relaxed text-faint">{c.d}</p>
+                <p className="mt-2.5 text-[12px] leading-relaxed text-faint">{c.d}</p>
                 <p className="mt-4 border-t border-line pt-3 text-[11px] text-muted">
                   <span className="text-faint">Leaks: </span>
                   <span className={c.good ? "text-positive" : "text-negative"}>{c.leak}</span>
@@ -199,8 +199,8 @@ export default function Home() {
                 <li key={s.n} className="flex gap-4 px-4 py-4">
                   <span className="font-mono text-[11px] text-accent">{s.n}</span>
                   <div>
-                    <h3 className="text-[13.5px] font-medium text-ink">{s.t}</h3>
-                    <p className="mt-1.5 max-w-2xl text-[12.5px] leading-relaxed text-faint">{s.d}</p>
+                    <h3 className="text-[13px] font-medium text-ink">{s.t}</h3>
+                    <p className="mt-1.5 max-w-2xl text-[12px] leading-relaxed text-faint">{s.d}</p>
                   </div>
                 </li>
               ))}
@@ -212,8 +212,8 @@ export default function Home() {
             <div className="flex gap-4 px-4 py-4">
               <span className="font-mono text-[11px] text-positive">04</span>
               <div>
-                <h3 className="text-[13.5px] font-medium text-ink">Atomic settlement</h3>
-                <p className="mt-1.5 max-w-2xl text-[12.5px] leading-relaxed text-faint">
+                <h3 className="text-[13px] font-medium text-ink">Atomic settlement</h3>
+                <p className="mt-1.5 max-w-2xl text-[12px] leading-relaxed text-faint">
                   The enclave signs the winning fill with its attested key. The contract verifies that
                   signature, then moves both ERC-20 legs in one transaction and emits{" "}
                   <code className="font-mono text-[12px] text-ink">Filled</code>. Nothing about the
@@ -246,7 +246,7 @@ export default function Home() {
                   <tr key={r.field}>
                     <td className="px-4 py-3">
                       <span className="text-[13px] text-ink">{r.field}</span>
-                      <span className="mt-0.5 block text-[11.5px] text-faint">{r.note}</span>
+                      <span className="mt-0.5 block text-[12px] text-faint">{r.note}</span>
                     </td>
                     <td className="px-4 py-3"><Cell v={r.taker} /></td>
                     <td className="px-4 py-3"><Cell v={r.makers} /></td>
@@ -281,8 +281,8 @@ export default function Home() {
             ].map((c) => (
               <div key={c.k} className="bg-base px-5 py-6">
                 <p className="text-[11px] uppercase tracking-[0.13em] text-muted">{c.k}</p>
-                <p className={`mt-2 font-mono tnum text-[26px] ${c.tone}`}>{c.v}</p>
-                <p className="mt-1 text-[11.5px] text-faint">{c.s}</p>
+                <p className={`mt-2 font-mono tnum text-[24px] ${c.tone}`}>{c.v}</p>
+                <p className="mt-1 text-[12px] text-faint">{c.s}</p>
               </div>
             ))}
           </div>
@@ -292,33 +292,54 @@ export default function Home() {
           </p>
         </Section>
 
-        {/* Why Flare */}
+        {/* Why a TEE */}
         <Section
           id="why"
-          eyebrow="Why Flare"
-          title="The enclave and the settlement live on the same chain."
+          eyebrow="Why a TEE"
+          title="Sealed matching is a solved problem four ways. Three of them don't fit an RFQ."
+          lede="A quote is worthless a minute later, so the constraint is latency, not elegance."
         >
-          <div className="grid gap-px bg-line sm:grid-cols-3">
+          <div className="border border-line bg-panel">
             {[
               {
-                h: "Confidential Compute",
-                d: "FCC runs the matcher as a registered TEE extension with its own attested signing key — the contract trusts a signature, not a server.",
+                h: "ZK proof of correct matching",
+                v: "Strongest guarantee. But the prover has to run before anyone can settle, and an RFQ quote is stale by then.",
+                verdict: "too slow",
+                tone: "text-faint",
               },
               {
-                h: "FXRP, not a wrapper",
-                d: "Settlement moves real FXRP against real USDT0 on Coston2, the same assets the FAssets system issues.",
+                h: "MPC across makers",
+                v: "No single trusted party, but every maker has to stay online and participate in the protocol to produce a match.",
+                verdict: "too coordinated",
+                tone: "text-faint",
               },
               {
-                h: "One trust domain",
-                d: "No bridge and no external prover between matching and settlement. The enclave signs; the chain verifies.",
+                h: "A trusted operator",
+                v: "Fast and simple. Also just asks you to believe the operator didn't look at your limit price.",
+                verdict: "no guarantee",
+                tone: "text-negative",
               },
-            ].map((c) => (
-              <div key={c.h} className="bg-base px-5 py-6">
-                <h3 className="text-[14px] font-medium text-ink">{c.h}</h3>
-                <p className="mt-2.5 text-[12.5px] leading-relaxed text-faint">{c.d}</p>
+              {
+                h: "TEE on Flare Confidential Compute",
+                v: "Matches in milliseconds, and the enclave signs the fill with an attested key the settlement contract verifies on the same chain. No bridge, no prover, no external committee between matching and settlement.",
+                verdict: "chosen",
+                tone: "text-positive",
+              },
+            ].map((r) => (
+              <div key={r.h} className="border-b border-line px-4 py-4 last:border-b-0">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <h3 className="text-[13px] font-medium text-ink">{r.h}</h3>
+                  <span className={`font-mono text-[11px] ${r.tone}`}>{r.verdict}</span>
+                </div>
+                <p className="mt-1.5 max-w-2xl text-[12px] leading-relaxed text-faint">{r.v}</p>
               </div>
             ))}
           </div>
+          <p className="mt-4 max-w-2xl text-[12px] leading-relaxed text-faint">
+            The honest trade: a TEE buys that speed with a hardware trust assumption a ZK proof
+            wouldn&apos;t need. And on this deployment the enclave is simulated, so even that
+            assumption isn&apos;t being enforced yet — see below.
+          </p>
         </Section>
 
         {/* Trust model */}
@@ -339,7 +360,7 @@ export default function Home() {
             ].map(([h, d]) => (
               <li key={h} className="bg-base px-5 py-5">
                 <h3 className="text-[13px] font-medium text-ink">{h}</h3>
-                <p className="mt-1.5 text-[12.5px] leading-relaxed text-faint">{d}</p>
+                <p className="mt-1.5 text-[12px] leading-relaxed text-faint">{d}</p>
               </li>
             ))}
           </ul>
@@ -365,14 +386,14 @@ export default function Home() {
                 rel="noreferrer"
                 className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-3 transition-colors duration-150 last:border-b-0 hover:bg-raised"
               >
-                <span className="text-[12.5px] text-muted">{k}</span>
-                <span className="font-mono text-[11.5px] text-accent">
+                <span className="text-[12px] text-muted">{k}</span>
+                <span className="font-mono text-[12px] text-accent">
                   {v.slice(0, 22)}… ↗
                 </span>
               </a>
             ))}
           </div>
-          <p className="mt-4 text-[12.5px] text-faint">
+          <p className="mt-4 text-[12px] text-faint">
             The matcher is{" "}
             <code className="font-mono text-[12px] text-muted">extension/go/internal/extension/rfq.go</code>;
             settlement is{" "}
