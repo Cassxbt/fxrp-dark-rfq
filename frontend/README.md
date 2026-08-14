@@ -14,7 +14,7 @@ Set `NEXT_PUBLIC_EXT_PROXY_URL` if the ngrok tunnel URL changes from the one har
 
 ## The one piece worth reading before touching this code
 
-`lib/ecies.ts` is a from-scratch, browser-safe port of go-ethereum's `crypto/ecies` package — not a generic ECIES library. The TEE extension decrypts with that exact Go implementation (NIST concat-KDF, AES-128-CTR, HMAC-SHA256 tag, specific byte layout), and a "standard" ECIES scheme will not produce compatible ciphertext. This was verified byte-for-byte against the live deployed TEE — twice, once with Node's native `crypto` module and once with the actual browser-safe Web Crypto + `@noble/curves` implementation that ships in this app — before any UI was built on top of it. Re-run `node scripts/verify-ecies.mjs` (with the stack's ngrok URL set inside the script) if this file is ever touched.
+`lib/ecies.ts` is a from-scratch, browser-safe port of go-ethereum's `crypto/ecies` package — not a generic ECIES library. The TEE extension decrypts with that exact Go implementation (NIST concat-KDF, AES-128-CTR, HMAC-SHA256 tag, specific byte layout), and a "standard" ECIES scheme will not produce compatible ciphertext. This was verified byte-for-byte against the live deployed TEE — twice, once with Node's native `crypto` module and once with the actual browser-safe Web Crypto + `@noble/curves` implementation that ships in this app — before any UI was built on top of it. Re-run `npx tsx scripts/verify-ecies.mts` (with the stack's ngrok URL set inside the script) if this file is ever touched.
 
 ## What's verified vs. not
 

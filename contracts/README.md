@@ -47,7 +47,7 @@ isn't mistaken for "fixed on-chain."
 re-verify the taker's `RfqIntent` or the maker's `Quote` signatures — that
 verification happens once, inside the Go extension (see `../extension/`). This is
 a disclosed scope choice under the `SIMULATED_TEE=true` trust model, not an
-oversight — see BUILD-SPEC.md §2.1's "trust-model disclosure" note.
+oversight — see [`../docs/TRUST.md`](../docs/TRUST.md).
 
 `isAttestedSigner` is an MVP owner-controlled allowlist, not a live
 `TeeExtensionRegistry` check — that registry's exact ABI is unconfirmed against the

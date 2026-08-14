@@ -14,7 +14,7 @@ Image hand-off to devops, on-chain registration, and the FTDC availability check
 </div>
 
 > [!NOTE]
-> `README.md` covers the local-devnet flow, and [`deployment-steps.md`](deployment-steps.md)
+> `README.md` covers the local-devnet flow, and [`DEPLOYMENT_STEPS.md`](DEPLOYMENT_STEPS.md)
 > is the concise linear recipe. **This document is the deep reference** — proxy
 > config internals, devops `/info` verification, the full troubleshooting
 > catalogue, and lifecycle/decommissioning.
@@ -374,9 +374,9 @@ It writes `sign-extension-<language>-<version>.tar` and prints the image ID.
 
 ```bash
 export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
-docker build -f typescript/Dockerfile -t sign-extension-ts:v0.1.0 .   # or Dockerfile / python/Dockerfile
-docker save sign-extension-ts:v0.1.0 -o sign-extension-ts-v0.1.0.tar
-docker inspect sign-extension-ts:v0.1.0 --format '{{range .Config.Env}}{{println .}}{{end}}' | grep MODE  # expect MODE=0
+docker build -f Dockerfile -t sign-extension-go:v0.1.0 .
+docker save sign-extension-go:v0.1.0 -o sign-extension-go-v0.1.0.tar
+docker inspect sign-extension-go:v0.1.0 --format '{{range .Config.Env}}{{println .}}{{end}}' | grep MODE  # expect MODE=0
 ```
 </details>
 
@@ -762,9 +762,9 @@ Last updated **2026-05-27**:
 | Doc                                            | What it covers                                                   |
 | ---------------------------------------------- | ---------------------------------------------------------------- |
 | [`README.md`](README.md)                       | Layout, language selection, local devnet flow, scripts overview  |
-| [`deployment-steps.md`](deployment-steps.md)   | The concise linear deploy recipe (step-by-step)                  |
+| [`DEPLOYMENT_STEPS.md`](DEPLOYMENT_STEPS.md)   | The concise linear deploy recipe (step-by-step)                  |
 | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md)     | `SOURCE_DATE_EPOCH`, build context, and reproducible image builds |
-| [`python/`](python/) · [`typescript/`](typescript/) | Per-language extension source + framework notes             |
+| [`go/`](go/)                                    | Go extension source (the only language this submission deploys) |
 
 <div align="center">
 

@@ -233,8 +233,8 @@ It writes `sign-extension-<language>-<version>.tar` and prints the image ID to h
 
 ```bash
 export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
-docker build -f typescript/Dockerfile -t sign-extension-ts:v0.1.0 .   # or Dockerfile / python/Dockerfile
-docker save sign-extension-ts:v0.1.0 -o sign-extension-ts-v0.1.0.tar
+docker build -f Dockerfile -t sign-extension-go:v0.1.0 .
+docker save sign-extension-go:v0.1.0 -o sign-extension-go-v0.1.0.tar
 ```
 
 `docker build -t` names + tags in one step (no separate `docker tag`), and

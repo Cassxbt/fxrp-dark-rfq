@@ -10,28 +10,27 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @dev Minimal Flare FTSOv2 feed-read interface. Feed id for Coston2 XRP/USD
-/// must be confirmed live before deployment — see BUILD-SPEC.md §2.1 / §4.1b.
+/// must be confirmed live before this bound is enabled — see docs/TRUST.md.
 interface IFtsoV2 {
     function getFeedById(bytes21 feedId) external view returns (uint256 value, int8 decimals, uint64 timestamp);
 }
 
 /// @title RfqSettlement
 /// @notice Atomic settlement for a sealed-bid FXRP/quoteToken RFQ matched off-chain
-///         inside a Flare Confidential Compute TEE extension. See BUILD-SPEC.md for
-///         the full design, threat model, and disclosed limitations.
+///         inside a Flare Confidential Compute TEE extension. Full trust model,
+///         threat model, and disclosed limitations: see docs/TRUST.md.
 ///
-/// @dev Trust model, stated plainly (BUILD-SPEC.md §2.1 round 3):
+/// @dev Trust model, stated plainly:
 ///      - This contract verifies only the TEE's own attestation signature over `Fill`.
 ///        Taker/maker intent signatures (`RfqIntent`, `Quote`) are verified off-chain,
 ///        inside the Go extension, and are NOT re-checked here — a deliberate scope
 ///        choice under the SIMULATED_TEE trust model, not an oversight.
 ///      - `isAttestedSigner` is an MVP owner-controlled allowlist. Production would
-///        check the signer against FlareTeeManager's live registry for our extension
-///        ID; that registry's exact ABI is unconfirmed against the deployed scaffold
-///        as of this commit (BUILD-SPEC.md §4.1b) — do not assume this is the final
-///        integration point.
+///        check the signer against a live TeeExtensionRegistry instead; that
+///        registry's exact ABI is unconfirmed against the deployed scaffold as of
+///        this commit — do not assume this is the final integration point.
 ///      - Holds no funds. Settlement is `transferFrom`-based and best-effort, not a
-///        binding commitment — see the non-binding-fill disclosure in the spec.
+///        binding commitment.
 contract RfqSettlement is EIP712, Ownable {
     using SafeERC20 for IERC20;
     using ECDSA for bytes32;
@@ -58,16 +57,15 @@ contract RfqSettlement is EIP712, Ownable {
     /// at deploy time — never a hardcoded/guessed address.
     IERC20 public immutable baseToken;
 
-    /// @notice mUSD (or USDT0 if swapped in per BUILD-SPEC.md §2.1) — the quote asset.
+    /// @notice The quote asset for this deployment (USDT0 on Coston2).
     IERC20 public immutable quoteToken;
 
-    /// @notice Optional FTSO price bound. Set to address(0) to disable (e.g. in tests
-    /// that don't want to depend on a live feed) — but per spec, if this check isn't
-    /// wired up for the real deployment, the FTSO differentiator claim comes out of
-    /// the README (BUILD-SPEC.md §2.1).
+    /// @notice Optional FTSO price bound. Zero address disables it (the default —
+    /// tests that don't want to depend on a live feed, and the current live
+    /// deployment, both leave this unset; see docs/TRUST.md).
     IFtsoV2 public ftso;
     bytes21 public ftsoFeedId;
-    uint256 public ftsoToleranceBps; // e.g. 1000 = 10%, per BUILD-SPEC.md round 2 §3.2
+    uint256 public ftsoToleranceBps; // e.g. 1000 = 10%
     uint256 public ftsoMaxStaleness; // seconds
 
     /// @dev MVP placeholder for the real TeeExtensionRegistry check — see contract-level NatSpec.
@@ -119,7 +117,7 @@ contract RfqSettlement is EIP712, Ownable {
     }
 
     /// @notice Settle a matched RFQ. Reverts (not silently no-ops) on every failure
-    /// path so the frontend can surface a specific reason per BUILD-SPEC.md §2.3.
+    /// path so the frontend can surface a specific reason.
     function settle(Fill calldata fill, bytes calldata attestationSig) external {
         if (settled[fill.rfqId]) revert AlreadySettled(fill.rfqId);
         if (block.timestamp > fill.expiry) revert Expired(fill.expiry, block.timestamp);
@@ -160,9 +158,9 @@ contract RfqSettlement is EIP712, Ownable {
         emit Filled(fill.rfqId, fill.taker, fill.maker, fill.side, fill.size, fill.price);
     }
 
-    /// @dev BUILD-SPEC.md §2.1: 10% tolerance (not the originally-proposed 2%, too
-    /// tight for a 60-120s expiry window), plus a staleness check. Skipped entirely
-    /// if `ftso` is unset — tests and early iteration don't need a live feed.
+    /// @dev 10% tolerance (2% was too tight for a 60-120s intent expiry window),
+    /// plus a staleness check. Skipped entirely if `ftso` is unset — the current
+    /// live deployment leaves it unset; see docs/TRUST.md.
     function _checkFtsoBound(uint256 price) internal view {
         if (address(ftso) == address(0)) return;
 
