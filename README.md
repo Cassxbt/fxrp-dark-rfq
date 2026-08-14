@@ -4,6 +4,7 @@ Sealed-bid RFQ matcher for FXRP that matches privately inside a Flare Confidenti
 
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?style=flat-square&logo=solidity&logoColor=white)](contracts/src/RfqSettlement.sol)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=next.js&logoColor=white)](frontend/package.json)
+[![Live](https://img.shields.io/badge/live-app-c9a84c?style=flat-square)](https://frontend-pi-ten-33.vercel.app)
 [![Network](https://img.shields.io/badge/Network-Coston2-e84142?style=flat-square)](https://coston2-explorer.flare.network)
 [![tests](https://img.shields.io/github/actions/workflow/status/Cassxbt/fxrp-dark-rfq/test.yml?style=flat-square&label=tests)](https://github.com/Cassxbt/fxrp-dark-rfq/actions/workflows/test.yml)
 
@@ -11,10 +12,17 @@ Built for [Flare Summer Signal](https://dorahacks.io/hackathon/flaresummersignal
 
 ## Demo
 
-**[`0xe158ffe7...a7a8e9`](https://coston2-explorer.flare.network/tx/0xe158ffe70bd1df2790ca3bc09c501cf214f6c7a7406872882361698551a7a8e9)** —
-a taker buying 1 FXRP, two makers quoting 2.95 and 2.99 USDT0, the TEE
-selecting the cheaper of the two, both ERC-20 legs settling atomically in one
-transaction. Real, independently checkable on the explorer — not a mock.
+Both directions, settled on Coston2 and independently checkable — not mocks:
+
+| Side | Size | Quotes seen | Filled at | Transaction |
+|---|---|---|---|---|
+| Taker **buy** | 1 FXRP | 2.95 · 2.99 | **2.95** (lowest wins) | [`0xe158ffe7…`](https://coston2-explorer.flare.network/tx/0xe158ffe70bd1df2790ca3bc09c501cf214f6c7a7406872882361698551a7a8e9) |
+| Taker **sell** | 1 FXRP | 2.55 · 2.60 | **2.60** (highest wins) | [`0x92d60cc4…`](https://coston2-explorer.flare.network/tx/0x92d60cc432e423fc6f37cd3de95ab3f7620efdf4f64f2bbe17a13652c1cbed01) |
+
+Two makers competed on each, and the winner flips with the side — which is the
+point: the enclave ranks against the taker's sealed limit rather than passing
+through whatever single quote arrived. Both ERC-20 legs move atomically in one
+transaction.
 
 Produced by [`frontend/scripts/e2e-demo.mts`](frontend/scripts/e2e-demo.mts), which drives the same `lib/eip712.ts`, `lib/rfqClient.ts`, and `lib/quoteAmount.ts` the UI itself calls.
 
@@ -68,17 +76,20 @@ matches inside the TEE, [`RfqSettlement.sol`](contracts/src/RfqSettlement.sol)
 settles. `forge test` and `go test ./...` both run in
 [CI](https://github.com/Cassxbt/fxrp-dark-rfq/actions/workflows/test.yml).
 
-The live UI is a secondary path, and it depends on a laptop ngrok tunnel:
+The live app is deployed at **[https://frontend-pi-ten-33.vercel.app](https://frontend-pi-ten-33.vercel.app)**.
 
-```bash
-cd frontend && npm install && npm run dev
-```
+It is a secondary path, and honestly so: the UI is on Vercel, but the FCC
+extension itself runs in Docker on a dev machine behind an ngrok tunnel. The
+browser never calls that tunnel directly — the extension's proxy sends no CORS
+headers and ngrok's free tier serves an interstitial to browser User-Agents, so
+requests go through a server-side route (`app/api/ext/[...path]`) that forwards
+them. The tunnel URL is the `EXT_PROXY_ORIGIN` env var, not baked into the
+bundle.
 
-`/taker` and `/maker` render standalone, but opening or quoting an RFQ needs
-the FCC extension reachable behind them (`NEXT_PUBLIC_EXT_PROXY_URL`, which
-falls back to the tunnel hardcoded in `frontend/lib/contracts.ts`) plus three
-funded Coston2 wallets. If `/info` doesn't respond, that tunnel is down —
-nothing about the fill above changes.
+Practically: opening or quoting needs that machine awake and three funded
+Coston2 wallets. If the app reports the extension unreachable, the tunnel is
+down and nothing about the fill above changes. Running it locally is the same
+picture — `cd frontend && npm install && npm run dev`.
 
 Driving it: the taker opens (approve, sign) and gets an RFQ ID to hand to
 makers out of band, since there's no public listing. Two makers quote it at
@@ -105,7 +116,7 @@ what produced the transaction linked under Demo above.
 | FXRP | Coston2 | [`0x0b6A3645c240605887a5532109323A3E12273dc7`](https://coston2-explorer.flare.network/address/0x0b6A3645c240605887a5532109323A3E12273dc7) |
 | USDT0 | Coston2 | [`0xC1A5B41512496B80903D1f32d6dEa3a73212E71F`](https://coston2-explorer.flare.network/address/0xC1A5B41512496B80903D1f32d6dEa3a73212E71F) |
 
-Proof-of-fill transaction: [`0xe158ffe7...a7a8e9`](https://coston2-explorer.flare.network/tx/0xe158ffe70bd1df2790ca3bc09c501cf214f6c7a7406872882361698551a7a8e9).
+Proof-of-fill transactions: [buy `0xe158ffe7…`](https://coston2-explorer.flare.network/tx/0xe158ffe70bd1df2790ca3bc09c501cf214f6c7a7406872882361698551a7a8e9) · [sell `0x92d60cc4…`](https://coston2-explorer.flare.network/tx/0x92d60cc432e423fc6f37cd3de95ab3f7620efdf4f64f2bbe17a13652c1cbed01).
 
 ## Known limitations
 
@@ -115,7 +126,7 @@ Proof-of-fill transaction: [`0xe158ffe7...a7a8e9`](https://coston2-explorer.flar
 - **`CLOSE` is unauthenticated**, and the `/direct` HTTP layer that carries OPEN/QUOTE/CLOSE has no authentication at all. Any address can trigger matching for any open RFQ ID. `OPEN`'s result also returns `{rfqId, side, size}` in cleartext to anyone polling it — side and size are not as tightly held as the on-chain summary alone would suggest, though the limit price and losing quotes never leave the TEE. Disclosed scope cuts, not oversights.
 - **On-chain settlement is asynchronous from the `CLOSE` call** (FCC's response window doesn't fit a chain round trip). The taker UI polls `settled()` and reports success/failure explicitly rather than leaving the call looking like it hung.
 - **The contract verifies only the TEE's `Fill` signature**, not the underlying `RfqIntent`/`Quote` signatures a second time — those are checked once inside the extension.
-- **The extension is served through a laptop ngrok tunnel**, not infrastructure. It dies when the host sleeps. The RFQ book is in-memory too, so a restart wipes open RFQs.
+- **The extension is served through a laptop ngrok tunnel**, not infrastructure. The UI is deployed, the enclave is not — it dies when the host sleeps. The RFQ book is in-memory too, so a restart wipes open RFQs.
 
 ## Repo layout
 

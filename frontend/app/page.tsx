@@ -7,6 +7,14 @@ import {
 } from "@/lib/contracts";
 
 const FILL_TX = "0xe158ffe70bd1df2790ca3bc09c501cf214f6c7a7406872882361698551a7a8e9";
+const FILL_TX_SELL = "0x92d60cc432e423fc6f37cd3de95ab3f7620efdf4f64f2bbe17a13652c1cbed01";
+
+// Both directions, settled on-chain. Two receipts rather than one: a single
+// fill reads as a one-off, and the pair shows the winner flips with the side.
+const FILLS = [
+  { side: "buy", size: "1.000000", price: "2.95", quotes: "2.95 · 2.99", tx: FILL_TX },
+  { side: "sell", size: "1.000000", price: "2.60", quotes: "2.55 · 2.60", tx: FILL_TX_SELL },
+] as const;
 const EXPLORER = "https://coston2-explorer.flare.network";
 const REPO = "https://github.com/Cassxbt/fxrp-dark-rfq";
 
@@ -107,32 +115,44 @@ export default function Home() {
             </div>
           </div>
 
-          <aside className="self-start border border-line bg-panel">
-            <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-              <span className="text-[11px] uppercase tracking-[0.13em] text-muted">Last settled fill</span>
+          <aside className="self-start overflow-hidden rounded-[10px] border border-line bg-panel">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted">
+                Settled fills · FXRP/USDT0
+              </span>
               <span className="h-1.5 w-1.5 rounded-full bg-positive" />
             </div>
-            <dl className="divide-y divide-line px-4">
-              {[
-                ["Pair", "FXRP / USDT0"],
-                ["Size", "1.000000"],
-                ["Filled at", "2.95"],
-                ["Quotes seen", "2.95 · 2.99"],
-              ].map(([k, v]) => (
-                <div key={k} className="flex items-baseline justify-between py-2.5">
-                  <dt className="text-[12px] text-faint">{k}</dt>
-                  <dd className="font-mono tnum text-[12px] text-ink">{v}</dd>
+
+            {FILLS.map((f) => (
+              <a
+                key={f.tx}
+                href={`${EXPLORER}/tx/${f.tx}`}
+                target="_blank"
+                rel="noreferrer"
+                className="block border-b border-line px-4 py-3 transition-colors duration-150 last:border-b-0 hover:bg-raised"
+              >
+                <div className="flex items-baseline justify-between gap-3">
+                  <span
+                    className={`font-mono text-[11px] uppercase tracking-[0.16em] ${
+                      f.side === "buy" ? "text-positive" : "text-negative"
+                    }`}
+                  >
+                    {f.side}
+                  </span>
+                  <span className="font-mono tnum text-[14px] text-ink">
+                    {f.size} <span className="text-faint">@</span> {f.price}
+                  </span>
                 </div>
-              ))}
-            </dl>
-            <a
-              href={`${EXPLORER}/tx/${FILL_TX}`}
-              target="_blank"
-              rel="noreferrer"
-              className="block border-t border-line px-4 py-2.5 font-mono text-[11px] text-accent transition-colors duration-150 hover:bg-raised"
-            >
-              {FILL_TX.slice(0, 18)}… ↗
-            </a>
+                <div className="mt-1.5 flex items-baseline justify-between gap-3">
+                  <span className="text-[11px] text-faint">quotes {f.quotes}</span>
+                  <span className="font-mono text-[11px] text-accent">{f.tx.slice(0, 12)}… ↗</span>
+                </div>
+              </a>
+            ))}
+
+            <p className="border-t border-line px-4 py-2.5 text-[11px] leading-relaxed text-faint">
+              Lowest qualifying quote wins a buy, highest wins a sell. Both settled on Coston2.
+            </p>
           </aside>
         </section>
 
@@ -309,6 +329,8 @@ export default function Home() {
           <p className="mt-5 max-w-2xl text-[13px] leading-relaxed text-muted">
             Maker B never learned it lost to 2.95, so its next quote is not calibrated against Maker A.
             The taker never revealed the extra 0.05 of room it had. That gap is the entire product.
+            The sell fill linked above is the same story inverted — there the taker wanted the
+            highest bid, and the maker quoting 2.60 beat the one at 2.55.
           </p>
         </Section>
 
@@ -399,7 +421,8 @@ export default function Home() {
               ["Settlement contract", RFQ_SETTLEMENT_ADDRESS, `${EXPLORER}/address/${RFQ_SETTLEMENT_ADDRESS}`],
               ["FXRP", FXRP_ADDRESS, `${EXPLORER}/address/${FXRP_ADDRESS}`],
               ["USDT0", USDT0_ADDRESS, `${EXPLORER}/address/${USDT0_ADDRESS}`],
-              ["Proof-of-fill transaction", FILL_TX, `${EXPLORER}/tx/${FILL_TX}`],
+              ["Proof-of-fill — taker buy", FILL_TX, `${EXPLORER}/tx/${FILL_TX}`],
+              ["Proof-of-fill — taker sell", FILL_TX_SELL, `${EXPLORER}/tx/${FILL_TX_SELL}`],
             ].map(([k, v, href]) => (
               <a
                 key={k}
