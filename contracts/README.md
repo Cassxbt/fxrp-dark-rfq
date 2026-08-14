@@ -19,10 +19,11 @@ forge build
 forge test -vv
 ```
 
-8 tests, all passing: the two decimal-math tests required by the spec (buy/sell,
+9 tests, all passing: the two decimal-math tests required by the spec (buy/sell,
 1 FXRP at 2.00 mUSD, verifying the corrected formula lands on exactly 2e18 and not
-the round-1 off-by-10¹² result), replay/expiry/untrusted-signer guards, and three
-FTSO-bound tests against a mocked feed (within tolerance, outside tolerance, stale).
+the round-1 off-by-10¹² result), replay/expiry/untrusted-signer/zero-amount guards,
+and three FTSO-bound tests against a mocked feed (within tolerance, outside
+tolerance, stale).
 
 ## What's deliberately not verified on-chain
 
