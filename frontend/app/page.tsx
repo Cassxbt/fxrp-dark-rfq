@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Tag, Medallion } from "@/components/ui";
 import {
   RFQ_SETTLEMENT_ADDRESS,
   FXRP_ADDRESS,
@@ -142,34 +143,39 @@ export default function Home() {
           title="Price discovery costs you the information you were trying to protect."
           lede="Every venue leaks something different. The leak is not incidental — it is how the venue works."
         >
-          <div className="grid gap-px bg-line md:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-3">
             {[
               {
+                kicker: "Lit venue",
                 h: "Public order book",
                 d: "Your resting bid is the signal. Size and price are visible to everyone, including whoever wants to trade ahead of you.",
                 leak: "Size + price, before the trade",
               },
               {
-                h: "Calling desks for quotes",
+                kicker: "Relationship",
+                h: "Calling desks",
                 d: "Each desk you ask learns your direction and size. Ask enough of them and the market knows your intent before anyone fills you.",
                 leak: "Intent, to every counterparty",
               },
               {
+                kicker: "Sealed",
                 h: "This desk",
                 d: "One sealed intent. Makers quote blind, against each other, without seeing your limit or their competition.",
                 leak: "The fill, after it settled",
                 good: true,
               },
             ].map((c) => (
-              <div key={c.h} className="lift border-t-2 border-line bg-panel px-5 py-6"
+              <div
+                key={c.h}
+                className="lift flex flex-col rounded-[10px] border border-t-2 border-line bg-panel px-6 py-7"
                 style={{ borderTopColor: c.good ? "var(--color-accent)" : "var(--color-negative)" }}
               >
-                <h3 className={`display text-[24px] ${c.good ? "text-accent" : "text-ink"}`}>{c.h}</h3>
-                <p className="mt-3 text-[12px] leading-relaxed text-faint">{c.d}</p>
-                <p className="mt-5 border-t border-line pt-3 font-mono text-[11px] uppercase tracking-[0.1em]">
-                  <span className="text-faint">Leaks: </span>
-                  <span className={c.good ? "text-positive" : "text-negative"}>{c.leak}</span>
-                </p>
+                <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">{c.kicker}</p>
+                <h3 className={`display mt-2 text-[24px] ${c.good ? "text-accent" : "text-ink"}`}>{c.h}</h3>
+                <p className="prose-serif mt-3 flex-1 text-muted">{c.d}</p>
+                <div className="mt-6 border-t border-line pt-4">
+                  <Tag tone={c.good ? "positive" : "negative"}>{c.leak}</Tag>
+                </div>
               </div>
             ))}
           </div>
@@ -182,9 +188,12 @@ export default function Home() {
           title="Matching happens off-chain inside the enclave. Only settlement is public."
           lede="Intents and quotes are EIP-712 signed, then ECIES-encrypted to the TEE's own key. The extension recovers each signer itself — nobody can file a quote under someone else's address."
         >
-          <div className="border border-line bg-panel">
-            <div className="border-b border-line px-4 py-2.5">
-              <span className="text-[11px] uppercase tracking-[0.13em] text-muted">Sealed inside the TEE</span>
+          <div className="overflow-hidden rounded-[10px] border border-line bg-panel">
+            <div className="flex items-center gap-2.5 border-b border-line px-6 py-3">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-accent">
+                Sealed inside the TEE
+              </span>
             </div>
             <ol className="divide-y divide-line">
               {[
@@ -204,24 +213,27 @@ export default function Home() {
                   d: "Expired quotes are dropped, then the best qualifying price wins — lowest at or below the limit on a buy, highest at or above it on a sell. Ties break to whoever quoted first.",
                 },
               ].map((s) => (
-                <li key={s.n} className="flex gap-4 px-4 py-4">
-                  <span className="font-mono text-[11px] text-accent">{s.n}</span>
+                <li key={s.n} className="flex gap-5 px-6 py-6">
+                  <Medallion>{s.n}</Medallion>
                   <div>
-                    <h3 className="text-[13px] font-medium text-ink">{s.t}</h3>
-                    <p className="mt-1.5 max-w-2xl text-[12px] leading-relaxed text-faint">{s.d}</p>
+                    <h3 className="display text-[19px] text-ink">{s.t}</h3>
+                    <p className="prose-serif mt-2 max-w-2xl text-muted">{s.d}</p>
                   </div>
                 </li>
               ))}
             </ol>
 
-            <div className="border-y border-line bg-raised px-4 py-2.5">
-              <span className="text-[11px] uppercase tracking-[0.13em] text-muted">Public on Coston2</span>
+            <div className="flex items-center gap-2.5 border-y border-line bg-raised px-6 py-3">
+              <span className="h-1.5 w-1.5 rounded-full bg-positive" />
+              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-positive">
+                Public on Coston2
+              </span>
             </div>
-            <div className="flex gap-4 px-4 py-4">
-              <span className="font-mono text-[11px] text-positive">04</span>
+            <div className="flex gap-5 px-6 py-6">
+              <Medallion>04</Medallion>
               <div>
-                <h3 className="text-[13px] font-medium text-ink">Atomic settlement</h3>
-                <p className="mt-1.5 max-w-2xl text-[12px] leading-relaxed text-faint">
+                <h3 className="display text-[19px] text-ink">Atomic settlement</h3>
+                <p className="prose-serif mt-2 max-w-2xl text-muted">
                   The enclave signs the winning fill with its attested key. The contract verifies that
                   signature, then moves both ERC-20 legs in one transaction and emits{" "}
                   <code className="font-mono text-[12px] text-ink">Filled</code>. Nothing about the
@@ -307,7 +319,7 @@ export default function Home() {
           title="Sealed matching is a solved problem four ways. Three of them don't fit an RFQ."
           lede="A quote is worthless a minute later, so the constraint is latency, not elegance."
         >
-          <div className="border border-line bg-panel">
+          <div className="overflow-hidden rounded-[10px] border border-line bg-panel">
             {[
               {
                 h: "ZK proof of correct matching",
@@ -335,11 +347,13 @@ export default function Home() {
               },
             ].map((r) => (
               <div key={r.h} className="border-b border-line px-4 py-5 transition-colors duration-150 last:border-b-0 hover:bg-raised">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <h3 className="text-[13px] font-medium text-ink">{r.h}</h3>
-                  <span className={`font-mono text-[11px] ${r.tone}`}>{r.verdict}</span>
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  <h3 className="display text-[19px] text-ink">{r.h}</h3>
+                  <Tag tone={r.verdict === "chosen" ? "positive" : r.verdict === "no guarantee" ? "negative" : "neutral"}>
+                    {r.verdict}
+                  </Tag>
                 </div>
-                <p className="mt-1.5 max-w-2xl text-[12px] leading-relaxed text-faint">{r.v}</p>
+                <p className="prose-serif mt-2 max-w-2xl text-muted">{r.v}</p>
               </div>
             ))}
           </div>
@@ -357,7 +371,7 @@ export default function Home() {
           title="What this prototype does not do."
           lede="This is a hackathon build. The interesting parts are real; these parts are not, and pretending otherwise would be the fastest way to lose your trust."
         >
-          <ul className="grid gap-px bg-line sm:grid-cols-2">
+          <ul className="grid gap-5 sm:grid-cols-2">
             {[
               ["Simulated TEE", "Runs FCC's sanctioned simulated mode. The signing key's integrity rests on the process, not on hardware attestation."],
               ["Owner allowlist", "The contract checks the signer against an owner-controlled allowlist, not a live TeeExtensionRegistry read."],
@@ -366,9 +380,9 @@ export default function Home() {
               ["In-memory book", "Open RFQs live in the extension's memory. A restart forgets them."],
               ["Non-binding quotes", "Settlement is transferFrom-based. If the winner pulled their allowance, the fill simply reverts."],
             ].map(([h, d]) => (
-              <li key={h} className="lift border border-line bg-panel px-5 py-5">
-                <h3 className="text-[13px] font-medium text-ink">{h}</h3>
-                <p className="mt-1.5 text-[12px] leading-relaxed text-faint">{d}</p>
+              <li key={h} className="lift rounded-[10px] border border-line bg-panel px-6 py-6">
+                <h3 className="display text-[19px] text-ink">{h}</h3>
+                <p className="prose-serif mt-2 text-muted">{d}</p>
               </li>
             ))}
           </ul>

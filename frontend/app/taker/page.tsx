@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAccount, useSignTypedData, useWriteContract, useWatchContractEvent, useConfig } from "wagmi";
 import { readContract, getPublicClient } from "wagmi/actions";
 import { parseUnits, formatUnits } from "viem";
-import { TopBar, Panel, Field, Btn, SideToggle, Row } from "@/components/ui";
+import { TopBar, Panel, Field, Btn, SideToggle, Row, Breadcrumb } from "@/components/ui";
 import { EIP712_DOMAIN, RFQ_INTENT_TYPES, SIDE_TAKER_BUY, SIDE_TAKER_SELL } from "@/lib/eip712";
 import { RFQ_SETTLEMENT_ADDRESS, FXRP_ADDRESS, USDT0_ADDRESS, ERC20_ABI, RFQ_SETTLEMENT_ABI } from "@/lib/contracts";
 import { sendRfqDirect } from "@/lib/rfqClient";
@@ -201,9 +201,10 @@ export default function TakerPage() {
       <TopBar active="taker" />
 
       <main className="mx-auto w-full max-w-5xl px-5 py-8">
+        <Breadcrumb trail={[{ label: "Desk", href: "/" }, { label: "Taker" }]} />
         <div className="mb-7 flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-[19px] font-semibold tracking-tight text-ink">Open an RFQ</h1>
+            <h1 className="display text-[34px] text-ink">Open an RFQ</h1>
             <p className="mt-1 text-[12px] text-faint">
               Your limit price is sealed to the enclave. Makers price the trade without seeing it.
             </p>

@@ -50,7 +50,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={`border border-line bg-panel ${className}`}>
+    <section className={`overflow-hidden rounded-[10px] border border-line bg-panel ${className}`}>
       {title && (
         <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
           <h2 className="text-[11px] font-medium uppercase tracking-[0.13em] text-muted">{title}</h2>
@@ -85,7 +85,7 @@ export function Field({
         <span className="text-[11px] uppercase tracking-[0.13em] text-muted">{label}</span>
         {hint}
       </div>
-      <div className="flex items-center border border-line bg-base focus-within:border-line-strong">
+      <div className="flex items-center rounded-[4px] border border-line bg-base focus-within:border-line-strong">
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -153,6 +153,61 @@ export function SideToggle({
         );
       })}
     </div>
+  );
+}
+
+/** Tiny mono category chip. Colour is semantic, never decorative. */
+export function Tag({
+  children,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  tone?: "neutral" | "accent" | "positive" | "negative";
+}) {
+  const tones = {
+    neutral: "border-line-strong bg-raised text-muted",
+    accent: "border-accent/35 bg-accent/10 text-accent",
+    positive: "border-positive/30 bg-positive/10 text-positive",
+    negative: "border-negative/30 bg-negative/10 text-negative",
+  }[tone];
+  return (
+    <span
+      className={`inline-block rounded-[2px] border px-[0.6em] py-[0.22em] font-mono text-[11px] uppercase tracking-[0.12em] ${tones}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** Mono trail with an underlined brass link and a faded separator. */
+export function Breadcrumb({ trail }: { trail: { label: string; href?: string }[] }) {
+  return (
+    <nav className="mb-7 font-mono text-[11px] uppercase tracking-[0.15em] text-faint">
+      {trail.map((t, i) => (
+        <span key={t.label}>
+          {i > 0 && <span className="mx-2 opacity-40">›</span>}
+          {t.href ? (
+            <Link
+              href={t.href}
+              className="text-accent-dim underline decoration-accent/40 underline-offset-[0.25em] transition-colors duration-150 hover:text-accent hover:decoration-accent"
+            >
+              {t.label}
+            </Link>
+          ) : (
+            <span className="text-muted">{t.label}</span>
+          )}
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+/** Brass-ringed disc for step markers. */
+export function Medallion({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="medallion inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-mono text-[12px] text-accent">
+      {children}
+    </span>
   );
 }
 

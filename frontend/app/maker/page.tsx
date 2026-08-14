@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAccount, useSignTypedData, useWriteContract } from "wagmi";
 import { parseUnits } from "viem";
-import { TopBar, Panel, Field, Btn, SideToggle } from "@/components/ui";
+import { TopBar, Panel, Field, Btn, SideToggle, Breadcrumb } from "@/components/ui";
 import { EIP712_DOMAIN, QUOTE_TYPES } from "@/lib/eip712";
 import { RFQ_SETTLEMENT_ADDRESS, FXRP_ADDRESS, USDT0_ADDRESS, ERC20_ABI } from "@/lib/contracts";
 import { sendRfqDirect } from "@/lib/rfqClient";
@@ -106,8 +106,9 @@ export default function MakerPage() {
       <TopBar active="maker" />
 
       <main className="mx-auto w-full max-w-5xl px-5 py-8">
+        <Breadcrumb trail={[{ label: "Desk", href: "/" }, { label: "Maker" }]} />
         <div className="mb-7">
-          <h1 className="text-[19px] font-semibold tracking-tight text-ink">Quote an RFQ</h1>
+          <h1 className="display text-[34px] text-ink">Quote an RFQ</h1>
           <p className="mt-1 text-[12px] text-faint">
             You are pricing blind: the taker&apos;s limit and every competing quote stay inside the enclave.
           </p>

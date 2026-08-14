@@ -123,6 +123,22 @@ body {
   opacity: 1;
 }
 
+/* Brass-ringed disc, faintly lit from within. */
+.medallion {
+  background: radial-gradient(circle at 50% 40%, rgba(201, 168, 76, 0.13), transparent 70%);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  box-shadow: 0 0 18px rgba(201, 168, 76, 0.07);
+}
+
+/* Editorial prose inside cards — serif, generous leading. The source's cards
+   read like placards because the body copy is serif, not because of the
+   headings. */
+.prose-serif {
+  font-family: var(--font-cormorant), ui-serif, Georgia, serif;
+  font-size: 1.12rem;
+  line-height: 1.65;
+}
+
 input[type="text"],
 input:not([type]) {
   font-variant-numeric: tabular-nums;
