@@ -11,8 +11,8 @@ import { sendRfqDirect } from "@/lib/rfqClient";
 import { hexToBytes } from "@/lib/ecies";
 import { quoteAmount } from "@/lib/quoteAmount";
 
-// Explorer-verified, not read live — see BUILD-SPEC.md §2.1. The contract
-// itself reads decimals() live on-chain; this only sizes the approve() call.
+// Explorer-verified, not read live. The contract itself reads decimals()
+// live on-chain; this only sizes the approve() call.
 const FXRP_DECIMALS = 6;
 const USDT0_DECIMALS = 6;
 
@@ -63,10 +63,9 @@ export default function TakerPage() {
     const expiry = BigInt(Math.floor(Date.now() / 1000) + 900);
     const rfqNonce = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
 
-    // Approve per BUILD-SPEC.md §2.1's role-specific rule — never max uint.
-    // Buy: approve the worst-case quote amount at the taker's own limit,
-    // computable now since it's the taker's own number. Sell: approve exact
-    // size of FXRP.
+    // Never max uint. Buy: approve the worst-case quote amount at the
+    // taker's own limit, computable now since it's the taker's own number.
+    // Sell: approve exact size of FXRP.
     try {
       if (sideNum === SIDE_TAKER_BUY) {
         const approveAmount = quoteAmount(sizeUnits, limitPriceWad, FXRP_DECIMALS, USDT0_DECIMALS);
@@ -137,7 +136,7 @@ export default function TakerPage() {
       }
 
       // Settlement is submitted asynchronously (the FCC framework's 2s
-      // response timeout doesn't fit a chain round trip — see BUILD-SPEC.md).
+      // response timeout doesn't fit a chain round trip — see docs/TRUST.md).
       // The Filled event watcher above will catch a success; this poll fills
       // the other half — if it *fails* (e.g. allowance was pulled, price
       // moved past the FTSO bound), there was previously no feedback at all
@@ -212,7 +211,7 @@ export default function TakerPage() {
             <div className="space-y-3 rounded border p-4">
               <div>
                 <p className="text-xs font-medium text-neutral-500">
-                  Share this with makers — there&apos;s no public listing (BUILD-SPEC.md §5):
+                  Share this with makers — there&apos;s no public listing:
                 </p>
                 <p className="mt-1 break-all rounded bg-neutral-50 p-2 font-mono text-xs">
                   RFQ {rfqId} — {openedRfq?.side === "buy" ? "taker is BUYING" : "taker is SELLING"} {openedRfq?.size} FXRP

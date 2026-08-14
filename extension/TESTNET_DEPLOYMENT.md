@@ -761,7 +761,8 @@ Last updated **2026-05-27**:
 
 | Doc                                            | What it covers                                                   |
 | ---------------------------------------------- | ---------------------------------------------------------------- |
-| [`README.md`](README.md)                       | Layout, language selection, local devnet flow, scripts overview  |
+| [`README.md`](README.md)                       | What this directory ships (the RFQ matcher)                      |
+| [`ops.md`](ops.md)                             | Layout, language selection, local devnet flow, scripts overview  |
 | [`DEPLOYMENT_STEPS.md`](DEPLOYMENT_STEPS.md)   | The concise linear deploy recipe (step-by-step)                  |
 | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md)     | `SOURCE_DATE_EPOCH`, build context, and reproducible image builds |
 | [`go/`](go/)                                    | Go extension source (the only language this submission deploys) |

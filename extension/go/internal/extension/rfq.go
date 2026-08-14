@@ -32,8 +32,8 @@ const (
 	sideTakerSell side = 1
 )
 
-// rfqIntent mirrors the taker's signed EIP-712 RfqIntent, per BUILD-SPEC.md §2.1/§2.2.
-// Field order and types must match the Solidity/JS encodings exactly, or the
+// rfqIntent mirrors the taker's signed EIP-712 RfqIntent. Field order and
+// types must match the Solidity/JS encodings exactly, or the
 // recovered signer will not match what the client believes it signed.
 type rfqIntent struct {
 	Side       side           `json:"side"`
@@ -62,7 +62,7 @@ type signedEnvelope[T any] struct {
 }
 
 // rfqState is the extension's in-memory record of one open RFQ. Deliberately
-// not persisted — a restart wipes the book, disclosed in BUILD-SPEC.md §2.2.
+// not persisted — a restart wipes the book (see docs/TRUST.md).
 type rfqState struct {
 	ID       common.Hash
 	Intent   rfqIntent
@@ -161,7 +161,7 @@ func validateQuote(q quote) error {
 //   FILL_TYPEHASH = keccak256("Fill(bytes32 rfqId,address taker,address maker,uint8 side,uint256 size,uint256 price,uint256 expiry)")
 //
 // RfqIntent and Quote are verified only here in the extension (not re-checked
-// on-chain — the disclosed trust-model choice in BUILD-SPEC.md §2.1), but they
+// on-chain — the disclosed trust-model choice, see docs/TRUST.md), but they
 // use the *same* domain as Fill so all three are bound to this contract and
 // can't be replayed against a different one.
 
@@ -433,8 +433,7 @@ func (b *rfqBook) submitQuote(q quote) error {
 
 // processRfqClose runs winner selection and, on a match, builds, signs, and
 // submits the settlement transaction. Triggered by the taker (or a client-side
-// timer) — see BUILD-SPEC.md §2.2's six-step winner-selection spec, implemented
-// exactly in selectWinner below.
+// timer) — see selectWinner below for the winner-selection steps.
 func (e *Extension) processRfqClose(action teetypes.Action, df *instruction.DataFixed) teetypes.ActionResult {
 	if len(df.OriginalMessage) != 32 {
 		return buildResult(action, df, nil, 0, fmt.Errorf("expected a 32-byte rfqId, got %d bytes", len(df.OriginalMessage)))
@@ -538,7 +537,7 @@ func (b *rfqBook) closeAndSelectWinner(rfqID common.Hash) (rfqState, quoteEntry,
 	return *rfq, winner, true
 }
 
-// selectWinner implements BUILD-SPEC.md §2.2's six-step spec exactly:
+// selectWinner picks the winning quote in six steps:
 //  1. Drop expired/malformed quotes (malformed ones never made it into the map
 //     at all — processRfqQuote already rejected them before storage)
 //  2. At most one live quote per maker (already enforced by map key)
@@ -684,8 +683,8 @@ func loadSettler() (*settler, error) {
 
 // submitSettle builds the on-chain Fill transaction and submits it using the
 // extension's gas-paying hot key (RFQ_HOT_KEY env var) — a distinct key from
-// the attested signer per BUILD-SPEC.md §2.1's "three keys" note: msg.sender
-// need not be the attested signer, the contract only checks the signature.
+// the attested signer: msg.sender need not be the attested signer, the
+// contract only checks the signature.
 func submitSettle(rfqID common.Hash, intent rfqIntent, winningQuote quote, expiry uint64, attestationSig []byte) (string, error) {
 	s, err := loadSettler()
 	if err != nil {

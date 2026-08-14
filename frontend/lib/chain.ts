@@ -1,7 +1,7 @@
 import { defineChain } from "viem";
 
-// Coston2 — chainId 114, per BUILD-SPEC.md and the deployed extension's own
-// CHAIN_ID env var. Not in viem's built-in chain list.
+// Coston2 — chainId 114, matching the deployed extension's own CHAIN_ID env
+// var. Not in viem's built-in chain list.
 export const coston2 = defineChain({
   id: 114,
   name: "Coston2",

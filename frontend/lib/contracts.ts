@@ -1,6 +1,6 @@
-// Addresses verified live on Coston2 — see BUILD-SPEC.md §2.1 and the repo's
-// commit history for how each was confirmed (explorer API for tokens, `cast
-// create`/`forge create` output for the deployed contract).
+// Addresses verified live on Coston2 — see the repo's commit history for how
+// each was confirmed (explorer API for tokens, `cast create`/`forge create`
+// output for the deployed contract).
 export const RFQ_SETTLEMENT_ADDRESS = "0xaBf47C48c00DDa806f1d9243c936A8153C7E6FcE" as const;
 export const FXRP_ADDRESS = "0x0b6A3645c240605887a5532109323A3E12273dc7" as const;
 export const USDT0_ADDRESS = "0xC1A5B41512496B80903D1f32d6dEa3a73212E71F" as const;

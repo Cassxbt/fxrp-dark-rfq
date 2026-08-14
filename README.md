@@ -5,7 +5,7 @@ Sealed-bid RFQ matcher for FXRP that matches privately inside a Flare Confidenti
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?style=flat-square&logo=solidity&logoColor=white)](contracts/src/RfqSettlement.sol)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=next.js&logoColor=white)](frontend/package.json)
 [![Network](https://img.shields.io/badge/Network-Coston2-e84142?style=flat-square)](https://coston2-explorer.flare.network)
-[![contracts](https://img.shields.io/github/actions/workflow/status/Cassxbt/fxrp-dark-rfq/test.yml?style=flat-square&label=forge%20test)](https://github.com/Cassxbt/fxrp-dark-rfq/actions/workflows/test.yml)
+[![tests](https://img.shields.io/github/actions/workflow/status/Cassxbt/fxrp-dark-rfq/test.yml?style=flat-square&label=tests)](https://github.com/Cassxbt/fxrp-dark-rfq/actions/workflows/test.yml)
 
 Built for [Flare Summer Signal](https://dorahacks.io/hackathon/flaresummersignal/detail) — Bounty 2 (Confidential Compute) primary, Bounty 1 (Interoperable Assets / FXRP) as integration proof.
 
@@ -16,7 +16,7 @@ a taker buying 1 FXRP, two makers quoting 2.95 and 2.99 USDT0, the TEE
 selecting the cheaper of the two, both ERC-20 legs settling atomically in one
 transaction. Real, independently checkable on the explorer — not a mock.
 
-Produced by [`frontend/scripts/e2e-demo.mts`](frontend/scripts/e2e-demo.mts), which drives the same `lib/eip712.ts`, `lib/rfqClient.ts`, and `lib/quoteAmount.ts` the UI itself calls — not a reimplementation.
+Produced by [`frontend/scripts/e2e-demo.mts`](frontend/scripts/e2e-demo.mts), which drives the same `lib/eip712.ts`, `lib/rfqClient.ts`, and `lib/quoteAmount.ts` the UI itself calls.
 
 ## Overview
 
@@ -58,12 +58,9 @@ in cleartext to anyone polling it — see Known limitations and
 
 | Component | Technology |
 |---|---|
-| Settlement contract | Solidity 0.8.24, Foundry, OpenZeppelin |
-| Confidential compute | Flare Confidential Compute (FCC), Go extension, simulated TEE mode |
-| Frontend | Next.js 16 · React 19 · wagmi · viem |
-| Crypto | EIP-712 typed signing · ECIES (browser-safe port of go-ethereum's scheme) |
-| Network | Flare Coston2 testnet |
-| Assets | FXRP · USDT0 |
+| Contract | Solidity 0.8.24 (Foundry, OpenZeppelin) |
+| Confidential compute | Flare Confidential Compute, Go extension, simulated TEE |
+| Frontend | Next.js 16 · wagmi · viem |
 
 ## Quickstart
 
@@ -133,8 +130,9 @@ The FCC extension is reachable through an ngrok tunnel whose URL is hardcoded as
 ## Repo layout
 
 - `contracts/` — `RfqSettlement.sol` + Foundry tests (10 passing)
-- `extension/` — Go FCC extension: RFQ intake, matching, TEE-signed settlement submission
+- `extension/` — Go FCC extension: RFQ intake, matching, TEE-signed settlement submission (deploy/ops runbook in `extension/ops.md`)
 - `frontend/` — Next.js taker/maker UI + `scripts/e2e-demo.mts`
+- `docs/TRUST.md` — trust model detail beyond the Known limitations section below
 
 ## License
 

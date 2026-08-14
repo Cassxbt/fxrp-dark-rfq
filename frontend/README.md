@@ -12,13 +12,17 @@ npm run dev
 
 Set `NEXT_PUBLIC_EXT_PROXY_URL` if the ngrok tunnel URL changes from the one hardcoded as a default in `lib/contracts.ts`.
 
-## The one piece worth reading before touching this code
+## Before touching `lib/ecies.ts`
 
-`lib/ecies.ts` is a from-scratch, browser-safe port of go-ethereum's `crypto/ecies` package — not a generic ECIES library. The TEE extension decrypts with that exact Go implementation (NIST concat-KDF, AES-128-CTR, HMAC-SHA256 tag, specific byte layout), and a "standard" ECIES scheme will not produce compatible ciphertext. This was verified byte-for-byte against the live deployed TEE — twice, once with Node's native `crypto` module and once with the actual browser-safe Web Crypto + `@noble/curves` implementation that ships in this app — before any UI was built on top of it. Re-run `npx tsx scripts/verify-ecies.mts` (with the stack's ngrok URL set inside the script) if this file is ever touched.
+It's a browser-safe port of go-ethereum's `crypto/ecies` package, not a
+generic ECIES library — the TEE decrypts with that exact scheme, so a
+standard implementation won't produce compatible ciphertext. Re-run
+`npx tsx scripts/verify-ecies.mts` against the live tunnel if this file
+changes.
 
 ## What's verified vs. not
 
-- **Verified**: production build (`next build`) passes cleanly; all routes render with zero console errors; the ECIES encryption is proven byte-compatible with the real TEE; the full approve → sign → submit → settle flow has been run end to end against the live Coston2 contract and the live TEE extension, producing a real `Filled` event (`../scripts/e2e-demo.mts` — see the root README's "Proof of a real fill"). That script calls the same `lib/eip712.ts`, `lib/rfqClient.ts`, and `lib/quoteAmount.ts` this UI calls.
+- **Verified**: production build (`next build`) passes cleanly; all routes render with zero console errors; the ECIES encryption is proven byte-compatible with the real TEE; the full approve → sign → submit → settle flow has been run end to end against the live Coston2 contract and the live TEE extension, producing a real `Filled` event (`scripts/e2e-demo.mts` — see the root README's [Demo](../README.md#demo)). That script calls the same `lib/eip712.ts`, `lib/rfqClient.ts`, and `lib/quoteAmount.ts` this UI calls.
 - **Not yet verified**: a literal browser click-through with a wallet extension (MetaMask popups, this UI's screens end to end). The e2e script proves the underlying code path works; it doesn't prove the React components wire it up correctly, since it bypasses the UI entirely.
 
 ## Known MVP limitations (disclosed, not bugs)

@@ -6,8 +6,8 @@ import {RfqSettlement, IFtsoV2} from "../src/RfqSettlement.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockFtsoV2} from "./mocks/MockFtsoV2.sol";
 
-/// @dev Required per BUILD-SPEC.md §2.1: buy 1e6 FXRP-units (1 FXRP, 6 decimals)
-/// at 2.00 mUSD, and the equivalent sell — plus FTSO-bound coverage, mocked per
+/// @dev Buy 1e6 FXRP-units (1 FXRP, 6 decimals) at 2.00 mUSD, and the
+/// equivalent sell — plus FTSO-bound coverage, mocked per
 /// the spec's own instruction ("tests must mock the FTSO feed").
 contract RfqSettlementTest is Test {
     MockERC20 fxrp; // 6 decimals, matches FXRP's confirmed on-chain decimals
@@ -54,7 +54,7 @@ contract RfqSettlementTest is Test {
     }
 
     /// Buy 1 FXRP (1e6 units, 6 decimals) at 2.00 mUSD (2e18 WAD) — decimal math
-    /// per BUILD-SPEC.md §2.1: quoteAmount = size*price*10^quoteDec/(10^baseDec*1e18)
+    /// quoteAmount = size*price*10^quoteDec/(10^baseDec*1e18)
     /// = 1e6 * 2e18 * 1e18 / (1e6 * 1e18) = 2e18 (i.e. exactly 2.00 mUSD).
     function test_TakerBuy_Settles_CorrectDecimalMath() public {
         RfqSettlement.Fill memory fill = RfqSettlement.Fill({
@@ -213,8 +213,8 @@ contract RfqSettlementTest is Test {
         rfq.settle(fill, sig);
     }
 
-    /// FTSO bound: mocked feed per BUILD-SPEC.md's own instruction (the live XRP/USD
-    /// price is not $2.00, so an unmocked test would fail this check). Price within
+    /// FTSO bound: mocked feed (the live XRP/USD price is not $2.00, so an
+    /// unmocked test would fail this check). Price within
     /// the 10% tolerance settles normally.
     function test_FtsoBound_WithinTolerance_Settles() public {
         vm.prank(owner);
@@ -236,7 +236,7 @@ contract RfqSettlementTest is Test {
     }
 
     /// Price far outside the FTSO bound reverts — this is the check that stops a
-    /// joke quote from winning, per BUILD-SPEC.md §2.1.
+    /// joke quote from winning.
     function test_FtsoBound_OutsideTolerance_Reverts() public {
         vm.prank(owner);
         rfq.setFtsoBound(IFtsoV2(address(ftso)), bytes21(0), 1000, 300);

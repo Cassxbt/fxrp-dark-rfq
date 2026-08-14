@@ -114,7 +114,7 @@ export async function sendRfqDirect(
   // the proxy side) — /action/result/{id} defaults to "threshold" if this
   // isn't passed explicitly, which silently returns nothing for a
   // submit-tagged action (found and fixed the hard way in the Go integration
-  // test — see BUILD-SPEC.md's changelog).
+  // test).
   for (let i = 0; i < 15; i++) {
     const resp = await fetch(`${EXT_PROXY_URL}/action/result/${actionId}?submissionTag=submit`);
     if (resp.ok) {

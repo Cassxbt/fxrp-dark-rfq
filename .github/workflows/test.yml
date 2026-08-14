@@ -1,14 +1,8 @@
-name: contracts
+name: test
 
 on:
   push:
-    paths:
-      - "contracts/**"
-      - ".github/workflows/test.yml"
   pull_request:
-    paths:
-      - "contracts/**"
-      - ".github/workflows/test.yml"
 
 jobs:
   forge-test:
@@ -28,3 +22,18 @@ jobs:
 
       - name: Run tests
         run: forge test -vv
+
+  go-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: extension/go
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: extension/go/go.mod
+
+      - name: Run tests
+        run: go test ./...

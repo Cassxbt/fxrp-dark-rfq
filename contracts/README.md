@@ -19,14 +19,12 @@ forge build
 forge test -vv
 ```
 
-10 tests, all passing: the two decimal-math tests required by the spec (buy/sell,
-1 FXRP at 2.00 mUSD, verifying the corrected formula lands on exactly 2e18 and not
-the round-1 off-by-10¹² result), a third decimal test against the actual production
-6/6 FXRP/USDT0 pair (`test_TakerBuy_SixAndSix_MatchesLiveFillShape`, pinned to the
-same 2.95 USDT0 result as the real funded fill — the other two use a 6/18 mock pair
-for historical reasons and don't exercise production's token shape),
-replay/expiry/untrusted-signer/zero-amount guards, and three FTSO-bound tests
-against a mocked feed (within tolerance, outside tolerance, stale).
+10 tests: decimal math for buy/sell (1 FXRP at 2.00 mUSD), a third decimal
+test against the actual production 6/6 FXRP/USDT0 pair
+(`test_TakerBuy_SixAndSix_MatchesLiveFillShape`, pinned to the same 2.95
+USDT0 result as the real funded fill), replay/expiry/untrusted-signer/
+zero-amount guards, and three FTSO-bound tests against a mocked feed (within
+tolerance, outside tolerance, stale).
 
 ## Known non-issues, hardened but not redeployed
 

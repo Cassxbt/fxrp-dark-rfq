@@ -30,11 +30,11 @@ type Extension struct {
 
 	// privateKey is the secp256k1 private key delivered via UPDATE_KEY. May be nil
 	// before the first successful UPDATE_KEY instruction. Doubles as the RFQ
-	// attested signer key — see BUILD-SPEC.md §2.1's "three keys" note.
+	// attested signer key — distinct from the extension's separate gas-paying
+	// hot key (RFQ_HOT_KEY) and the ECIES encryption key.
 	privateKey *secp256k1.PrivateKey
 
-	// book holds in-memory RFQ/quote state. Not persisted — a restart wipes it,
-	// disclosed in BUILD-SPEC.md §2.2.
+	// book holds in-memory RFQ/quote state. Not persisted — a restart wipes it.
 	book *rfqBook
 }
 
@@ -158,8 +158,7 @@ func (e *Extension) processKey(action teetypes.Action, df *instruction.DataFixed
 }
 
 // processRfq routes RFQ instructions by OPCommand (OPEN, QUOTE, or CLOSE).
-// Dispatched via the proxy's /direct endpoint, not InstructionSender — see
-// BUILD-SPEC.md §2.2's architecture-correction changelog entry.
+// Dispatched via the proxy's /direct endpoint, not InstructionSender.
 func (e *Extension) processRfq(action teetypes.Action, df *instruction.DataFixed) (int, []byte) {
 	var ar teetypes.ActionResult
 	switch {

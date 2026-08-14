@@ -9,7 +9,7 @@
  * "standard" ECIES implementation will not produce compatible ciphertext.
  *
  * Verified byte-for-byte against the live deployed TEE before this file was
- * used anywhere near the UI — see BUILD-SPEC.md's changelog. secp256k1 ECDH
+ * used anywhere near the UI. secp256k1 ECDH
  * uses @noble/curves because Web Crypto's ECDH only supports NIST P-curves,
  * not secp256k1; everything else (SHA-256, HMAC, AES-CTR) uses the Web Crypto
  * API directly since it's natively available in every target browser.

@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Next.js / Claude Code tool-generated files, not part of the product
+AGENTS.md
+CLAUDE.md

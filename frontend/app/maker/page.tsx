@@ -18,8 +18,7 @@ export default function MakerPage() {
   const { writeContractAsync } = useWriteContract();
 
   // Side and size are told to the maker out of band by the taker — there is
-  // no public RFQ listing (BUILD-SPEC.md §5, "Public maker discovery/routing"
-  // is explicitly out of scope for this MVP). The maker needs them anyway to
+  // no public RFQ listing (see docs/TRUST.md). The maker needs them anyway to
   // price intelligently and to know which token to approve.
   const [rfqId, setRfqId] = useState("");
   const [rfqSide, setRfqSide] = useState<"buy" | "sell">("buy");
@@ -40,8 +39,8 @@ export default function MakerPage() {
       const priceWad = parseUnits(price, 18);
       const expiry = BigInt(Math.floor(Date.now() / 1000) + 300); // 5 min
 
-      // Approve per BUILD-SPEC.md §2.1's role-specific rule — the maker's own
-      // quoted price makes this exact and knowable, unlike the taker-buy case.
+      // The maker's own quoted price makes this exact and knowable, unlike
+      // the taker-buy case.
       if (rfqSide === "buy") {
         // Taker is buying FXRP, so the maker sells FXRP.
         setStatus("Approving FXRP...");
