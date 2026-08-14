@@ -7,6 +7,7 @@ import { TopBar, Panel, Field, Btn, SideToggle, Breadcrumb, Tag } from "@/compon
 import { EIP712_DOMAIN, QUOTE_TYPES } from "@/lib/eip712";
 import { RFQ_SETTLEMENT_ADDRESS, FXRP_ADDRESS, USDT0_ADDRESS, ERC20_ABI } from "@/lib/contracts";
 import { sendRfqDirect } from "@/lib/rfqClient";
+import { formatError } from "@/lib/formatError";
 import { quoteAmount } from "@/lib/quoteAmount";
 
 const FXRP_DECIMALS = 6;
@@ -92,7 +93,7 @@ export default function MakerPage() {
       }
       setStatus("Quote submitted. If you win, the taker's CLOSE triggers settlement — watch your wallet balance or the contract's Filled event to confirm.");
     } catch (err) {
-      setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      setStatus(`Error: ${formatError(err)}`);
     } finally {
       setBusy(false);
     }

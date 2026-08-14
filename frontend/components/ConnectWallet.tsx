@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { formatError } from "@/lib/formatError";
 
 export function ConnectWallet() {
   const { address, isConnected } = useAccount();
@@ -19,7 +20,7 @@ export function ConnectWallet() {
       // unlike every other action in this app.
       await connectAsync({ connector: connectors[0] });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatError(err));
     }
   }
 

@@ -8,6 +8,7 @@ import { TopBar, Panel, Field, Btn, SideToggle, Row, Breadcrumb, Tag } from "@/c
 import { EIP712_DOMAIN, RFQ_INTENT_TYPES, SIDE_TAKER_BUY, SIDE_TAKER_SELL } from "@/lib/eip712";
 import { RFQ_SETTLEMENT_ADDRESS, FXRP_ADDRESS, USDT0_ADDRESS, ERC20_ABI, RFQ_SETTLEMENT_ABI } from "@/lib/contracts";
 import { sendRfqDirect } from "@/lib/rfqClient";
+import { formatError } from "@/lib/formatError";
 import { hexToBytes } from "@/lib/ecies";
 import { quoteAmount } from "@/lib/quoteAmount";
 
@@ -117,7 +118,7 @@ export default function TakerPage() {
       setOpenedRfq({ side, size });
       setStatus("RFQ opened.");
     } catch (err) {
-      setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      setStatus(`Error: ${formatError(err)}`);
     } finally {
       setBusy(false);
     }
@@ -184,7 +185,7 @@ export default function TakerPage() {
         "No Filled after ~30s — settlement likely reverted (check allowance, balance, or the attested-signer whitelist). Not a UI bug: the chain itself never recorded a fill.",
       );
     } catch (err) {
-      setCloseResult(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      setCloseResult(`Error: ${formatError(err)}`);
     } finally {
       setBusy(false);
     }
