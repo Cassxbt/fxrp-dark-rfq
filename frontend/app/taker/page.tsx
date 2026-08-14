@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAccount, useSignTypedData, useWriteContract, useWatchContractEvent, useConfig } from "wagmi";
 import { readContract, getPublicClient } from "wagmi/actions";
 import { parseUnits, formatUnits } from "viem";
-import { TopBar, Panel, Field, Btn, SideToggle, Row, Breadcrumb } from "@/components/ui";
+import { TopBar, Panel, Field, Btn, SideToggle, Row, Breadcrumb, Tag } from "@/components/ui";
 import { EIP712_DOMAIN, RFQ_INTENT_TYPES, SIDE_TAKER_BUY, SIDE_TAKER_SELL } from "@/lib/eip712";
 import { RFQ_SETTLEMENT_ADDRESS, FXRP_ADDRESS, USDT0_ADDRESS, ERC20_ABI, RFQ_SETTLEMENT_ABI } from "@/lib/contracts";
 import { sendRfqDirect } from "@/lib/rfqClient";
@@ -313,6 +313,45 @@ export default function TakerPage() {
                     )}
                   </div>
                 )}
+              </Panel>
+
+              <Panel title="What leaves this screen">
+                <ul className="divide-y divide-line px-4">
+                  {[
+                    {
+                      k: "Your limit price",
+                      v: "stays sealed",
+                      tone: "positive" as const,
+                      d: "Encrypted to the enclave's key before it leaves the browser. No maker sees it, and it is never written on-chain — not even after the fill.",
+                    },
+                    {
+                      k: "Side and size",
+                      v: "shared",
+                      tone: "neutral" as const,
+                      d: "Makers need both to price the trade and to know which token to approve. You hand them the RFQ id out of band; there is no public listing.",
+                    },
+                    {
+                      k: "Every losing quote",
+                      v: "discarded",
+                      tone: "positive" as const,
+                      d: "Ranked inside the enclave and dropped. Losing makers never learn what beat them, so their next quote is not calibrated against a rival.",
+                    },
+                    {
+                      k: "The winning fill",
+                      v: "public",
+                      tone: "accent" as const,
+                      d: "Maker, size and price land on-chain in the Filled event. That is the only trace this trade leaves.",
+                    },
+                  ].map((r) => (
+                    <li key={r.k} className="py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[13px] text-ink">{r.k}</span>
+                        <Tag tone={r.tone}>{r.v}</Tag>
+                      </div>
+                      <p className="mt-1.5 text-[12px] leading-relaxed text-faint">{r.d}</p>
+                    </li>
+                  ))}
+                </ul>
               </Panel>
 
               {filled && (

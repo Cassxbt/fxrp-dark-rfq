@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAccount, useSignTypedData, useWriteContract } from "wagmi";
 import { parseUnits } from "viem";
-import { TopBar, Panel, Field, Btn, SideToggle, Breadcrumb } from "@/components/ui";
+import { TopBar, Panel, Field, Btn, SideToggle, Breadcrumb, Tag } from "@/components/ui";
 import { EIP712_DOMAIN, QUOTE_TYPES } from "@/lib/eip712";
 import { RFQ_SETTLEMENT_ADDRESS, FXRP_ADDRESS, USDT0_ADDRESS, ERC20_ABI } from "@/lib/contracts";
 import { sendRfqDirect } from "@/lib/rfqClient";
@@ -178,6 +178,24 @@ export default function MakerPage() {
                     </p>
                   </div>
                 )}
+              </Panel>
+
+              <Panel title="What you are not shown — and why that is the point">
+                <ul className="divide-y divide-line px-4">
+                  {[
+                    ["The taker's limit", "You cannot shade your price up to just under it, because you do not know where it is. Quote what the flow is worth to you."],
+                    ["Competing quotes", "You are not bidding against a number on a screen. Nobody can see your price and undercut it by a tick."],
+                    ["Whether you lost", "If another maker wins, you are never told at what price. Your next quote stays your own opinion, not a reaction to theirs."],
+                  ].map(([k, d]) => (
+                    <li key={k} className="py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[13px] text-ink">{k}</span>
+                        <Tag>hidden</Tag>
+                      </div>
+                      <p className="mt-1.5 text-[12px] leading-relaxed text-faint">{d}</p>
+                    </li>
+                  ))}
+                </ul>
               </Panel>
 
               <Panel title="What the enclave does with this">
