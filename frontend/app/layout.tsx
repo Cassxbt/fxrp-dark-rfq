@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { Curtain } from "@/components/motion";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           flex body silently breaks `mx-auto max-w-*` children by shrink-wrapping
           them (auto margins beat align-items: stretch on the cross axis). */}
       <body>
+        <Curtain />
         <Providers>{children}</Providers>
       </body>
     </html>
