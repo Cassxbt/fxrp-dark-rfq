@@ -23,13 +23,17 @@ function Section({
   children?: React.ReactNode;
 }) {
   return (
-    <section id={id} className="border-b border-line py-14">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-accent">{eyebrow}</p>
-      <h2 className="mt-3 max-w-2xl text-[24px] font-semibold leading-tight tracking-[-0.015em] text-ink">
-        {title}
-      </h2>
-      {lede && <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted">{lede}</p>}
-      {children && <div className="mt-8">{children}</div>}
+    <section id={id} className="border-b border-line py-16">
+      <p className="eyebrow-ruled font-mono text-[11px] uppercase tracking-[0.22em] text-accent">
+        {eyebrow}
+      </p>
+      <h2 className="display mt-4 max-w-2xl text-[34px] leading-[1.15] text-ink">{title}</h2>
+      {lede && (
+        <p className="mt-3 max-w-2xl font-display text-[19px] italic leading-relaxed text-accent-lt/85">
+          {lede}
+        </p>
+      )}
+      {children && <div className="mt-9">{children}</div>}
     </section>
   );
 }
@@ -51,11 +55,11 @@ function Cell({ v }: { v: string }) {
 
 export default function Home() {
   return (
-    <main className="grid-surface min-h-screen">
+    <main className="lit min-h-screen">
       <div className="mx-auto w-full max-w-5xl px-5">
         <header className="sticky top-0 z-10 flex h-14 items-center gap-2.5 border-b border-line bg-base/85 backdrop-blur">
           <span className="h-2.5 w-2.5 rounded-[2px] bg-accent" />
-          <span className="text-[13px] font-semibold tracking-tight">FXRP Dark RFQ</span>
+          <span className="display text-[19px] tracking-[0.02em]">FXRP Dark RFQ</span>
           <nav className="ml-6 hidden gap-4 text-[12px] text-faint sm:flex">
             <a href="#how" className="transition-colors duration-150 hover:text-ink">How it works</a>
             <a href="#visibility" className="transition-colors duration-150 hover:text-ink">Who sees what</a>
@@ -70,18 +74,20 @@ export default function Home() {
         {/* Hero */}
         <section className="grid gap-10 border-b border-line py-16 md:grid-cols-[1.35fr_1fr] md:gap-14 md:py-20">
           <div>
-            <p className="mb-4 text-[11px] uppercase tracking-[0.16em] text-accent">
-              Sealed-bid OTC · Flare Confidential Compute
+            <p className="eyebrow-ruled mb-6 font-mono text-[11px] uppercase tracking-[0.28em] text-accent">
+              Sealed-bid OTC
             </p>
-            <h1 className="text-[34px] font-semibold leading-[1.12] tracking-[-0.02em] text-ink sm:text-[42px]">
+            <h1 className="display text-[42px] leading-[1.08] text-ink sm:text-[56px]">
               Trade FXRP without
               <br />
               showing your hand.
             </h1>
-            <p className="mt-5 max-w-md text-[14px] leading-relaxed text-muted">
-              Ask five desks for a price and you have told five desks what you want. This one takes your
-              limit, seals it inside a TEE, collects quotes that cannot see each other, and settles only
-              the winner on-chain.
+            <p className="mt-6 max-w-lg font-display text-[19px] italic leading-relaxed text-accent-lt/85">
+              Ask five desks for a price and you have told five desks what you want.
+            </p>
+            <p className="mt-4 max-w-md text-[14px] leading-relaxed text-muted">
+              This one takes your limit, seals it inside a TEE, collects quotes that cannot see each
+              other, and settles only the winner on-chain.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -155,10 +161,12 @@ export default function Home() {
                 good: true,
               },
             ].map((c) => (
-              <div key={c.h} className="bg-base px-5 py-6">
-                <h3 className={`text-[14px] font-medium ${c.good ? "text-accent" : "text-ink"}`}>{c.h}</h3>
-                <p className="mt-2.5 text-[12px] leading-relaxed text-faint">{c.d}</p>
-                <p className="mt-4 border-t border-line pt-3 text-[11px] text-muted">
+              <div key={c.h} className="lift border-t-2 border-line bg-panel px-5 py-6"
+                style={{ borderTopColor: c.good ? "var(--color-accent)" : "var(--color-negative)" }}
+              >
+                <h3 className={`display text-[24px] ${c.good ? "text-accent" : "text-ink"}`}>{c.h}</h3>
+                <p className="mt-3 text-[12px] leading-relaxed text-faint">{c.d}</p>
+                <p className="mt-5 border-t border-line pt-3 font-mono text-[11px] uppercase tracking-[0.1em]">
                   <span className="text-faint">Leaks: </span>
                   <span className={c.good ? "text-positive" : "text-negative"}>{c.leak}</span>
                 </p>
@@ -279,10 +287,10 @@ export default function Home() {
               { k: "Maker B", v: "2.99", s: "never published", tone: "text-faint" },
               { k: "Settled at", v: "2.95", s: "on-chain", tone: "text-ink" },
             ].map((c) => (
-              <div key={c.k} className="bg-base px-5 py-6">
-                <p className="text-[11px] uppercase tracking-[0.13em] text-muted">{c.k}</p>
-                <p className={`mt-2 font-mono tnum text-[24px] ${c.tone}`}>{c.v}</p>
-                <p className="mt-1 text-[12px] text-faint">{c.s}</p>
+              <div key={c.k} className="bg-panel px-5 py-7 text-center">
+                <p className={`display tnum text-[42px] leading-none ${c.tone}`}>{c.v}</p>
+                <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">{c.k}</p>
+                <p className="mt-1.5 text-[12px] text-faint">{c.s}</p>
               </div>
             ))}
           </div>
@@ -326,7 +334,7 @@ export default function Home() {
                 tone: "text-positive",
               },
             ].map((r) => (
-              <div key={r.h} className="border-b border-line px-4 py-4 last:border-b-0">
+              <div key={r.h} className="border-b border-line px-4 py-5 transition-colors duration-150 last:border-b-0 hover:bg-raised">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <h3 className="text-[13px] font-medium text-ink">{r.h}</h3>
                   <span className={`font-mono text-[11px] ${r.tone}`}>{r.verdict}</span>
@@ -358,7 +366,7 @@ export default function Home() {
               ["In-memory book", "Open RFQs live in the extension's memory. A restart forgets them."],
               ["Non-binding quotes", "Settlement is transferFrom-based. If the winner pulled their allowance, the fill simply reverts."],
             ].map(([h, d]) => (
-              <li key={h} className="bg-base px-5 py-5">
+              <li key={h} className="lift border border-line bg-panel px-5 py-5">
                 <h3 className="text-[13px] font-medium text-ink">{h}</h3>
                 <p className="mt-1.5 text-[12px] leading-relaxed text-faint">{d}</p>
               </li>

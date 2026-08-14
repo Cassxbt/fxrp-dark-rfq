@@ -7,7 +7,7 @@ export function TopBar({ active }: { active: "taker" | "maker" }) {
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-6 px-5">
         <Link href="/" className="flex items-center gap-2.5 text-ink hover:text-accent">
           <span className="h-2.5 w-2.5 rounded-[2px] bg-accent" />
-          <span className="text-[13px] font-semibold tracking-tight">FXRP Dark RFQ</span>
+          <span className="display text-[19px] tracking-[0.02em]">FXRP Dark RFQ</span>
         </Link>
 
         <nav className="flex items-center gap-1 text-[13px]">

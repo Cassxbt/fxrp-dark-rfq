@@ -102,7 +102,7 @@ export default function MakerPage() {
   const failed = status.startsWith("Failed") || status.startsWith("Error") || status.startsWith("RFQ ID must");
 
   return (
-    <div className="grid-surface min-h-screen">
+    <div className="lit grid-surface min-h-screen">
       <TopBar active="maker" />
 
       <main className="mx-auto w-full max-w-5xl px-5 py-8">

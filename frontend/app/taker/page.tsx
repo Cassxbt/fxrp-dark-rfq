@@ -197,7 +197,7 @@ export default function TakerPage() {
   const stage = filled ? 3 : rfqId ? 2 : 1;
 
   return (
-    <div className="grid-surface min-h-screen">
+    <div className="lit grid-surface min-h-screen">
       <TopBar active="taker" />
 
       <main className="mx-auto w-full max-w-5xl px-5 py-8">
