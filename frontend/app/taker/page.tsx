@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useSignTypedData, useWriteContract, useWatchContractEvent } from "wagmi";
+import { useAccount, useSignTypedData, useWriteContract, useWatchContractEvent, useConfig } from "wagmi";
+import { readContract } from "wagmi/actions";
 import { parseUnits } from "viem";
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { EIP712_DOMAIN, RFQ_INTENT_TYPES, SIDE_TAKER_BUY, SIDE_TAKER_SELL } from "@/lib/eip712";
@@ -21,6 +22,7 @@ export default function TakerPage() {
   const { address, isConnected } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
   const { writeContractAsync } = useWriteContract();
+  const wagmiConfig = useConfig();
 
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [size, setSize] = useState("1");
@@ -29,6 +31,10 @@ export default function TakerPage() {
   const [rfqId, setRfqId] = useState<`0x${string}` | null>(null);
   const [closeResult, setCloseResult] = useState<string | null>(null);
   const [filled, setFilled] = useState<FilledArgs | null>(null);
+  // Captured at open time — the form's live side/size state can be edited
+  // after opening (before closing), which would make the share blob below
+  // silently drift from what was actually submitted on-chain.
+  const [openedRfq, setOpenedRfq] = useState<{ side: "buy" | "sell"; size: string } | null>(null);
 
   useWatchContractEvent({
     address: RFQ_SETTLEMENT_ADDRESS,
@@ -46,11 +52,15 @@ export default function TakerPage() {
     setRfqId(null);
     setFilled(null);
     setCloseResult(null);
+    setOpenedRfq(null);
 
     const sizeUnits = parseUnits(size, FXRP_DECIMALS);
     const limitPriceWad = parseUnits(limitPrice, 18);
     const sideNum = side === "buy" ? SIDE_TAKER_BUY : SIDE_TAKER_SELL;
-    const expiry = BigInt(Math.floor(Date.now() / 1000) + 300); // 5 min
+    // 15 min, not 5 — a three-wallet taker/maker/maker dance in a live demo
+    // can easily take longer than 5 minutes, and an intent expiring mid-demo
+    // is a self-inflicted failure, not a real limitation worth cutting close on.
+    const expiry = BigInt(Math.floor(Date.now() / 1000) + 900);
     const rfqNonce = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
 
     // Approve per BUILD-SPEC.md §2.1's role-specific rule — never max uint.
@@ -102,9 +112,8 @@ export default function TakerPage() {
       }
       const decoded = JSON.parse(new TextDecoder().decode(hexToBytes(result.data)));
       setRfqId(decoded.rfqId);
-      setStatus(
-        `RFQ opened. Share this ID, and the side/size, with makers directly — there's no public listing (disclosed in BUILD-SPEC.md §5).`,
-      );
+      setOpenedRfq({ side, size });
+      setStatus("RFQ opened.");
     } catch (err) {
       setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -121,7 +130,36 @@ export default function TakerPage() {
       }
       const decoded = JSON.parse(new TextDecoder().decode(hexToBytes(result.data)));
       setCloseResult(JSON.stringify(decoded));
-      setStatus("Closed. Settlement is submitted asynchronously — watch for the Filled event below, don't trust the close response alone.");
+
+      if (!decoded.matched) {
+        setStatus("Closed — no qualifying quote, nothing to settle.");
+        return;
+      }
+
+      // Settlement is submitted asynchronously (the FCC framework's 2s
+      // response timeout doesn't fit a chain round trip — see BUILD-SPEC.md).
+      // The Filled event watcher above will catch a success; this poll fills
+      // the other half — if it *fails* (e.g. allowance was pulled, price
+      // moved past the FTSO bound), there was previously no feedback at all
+      // and the UI would just sit there looking broken. Polls settled()
+      // directly rather than trusting any response as proof of settlement.
+      setStatus("Closed — waiting for on-chain settlement (up to ~30s)...");
+      for (let i = 0; i < 15; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const isSettled = await readContract(wagmiConfig, {
+          address: RFQ_SETTLEMENT_ADDRESS,
+          abi: RFQ_SETTLEMENT_ABI,
+          functionName: "settled",
+          args: [rfqId],
+        });
+        if (isSettled) {
+          setStatus("Settled on-chain — see the Filled details below once the event watcher catches up.");
+          return;
+        }
+      }
+      setStatus(
+        "No Filled after ~30s — settlement likely reverted (check allowance, FTSO bound, or attested-signer whitelist). Not a UI bug: the chain itself never recorded a fill.",
+      );
     } catch (err) {
       setCloseResult(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -171,8 +209,15 @@ export default function TakerPage() {
           {status && <p className="text-sm text-neutral-700 break-all">{status}</p>}
 
           {rfqId && (
-            <div className="space-y-2 rounded border p-4">
-              <p className="break-all font-mono text-sm">RFQ ID: {rfqId}</p>
+            <div className="space-y-3 rounded border p-4">
+              <div>
+                <p className="text-xs font-medium text-neutral-500">
+                  Share this with makers — there&apos;s no public listing (BUILD-SPEC.md §5):
+                </p>
+                <p className="mt-1 break-all rounded bg-neutral-50 p-2 font-mono text-xs">
+                  RFQ {rfqId} — {openedRfq?.side === "buy" ? "taker is BUYING" : "taker is SELLING"} {openedRfq?.size} FXRP
+                </p>
+              </div>
               <button onClick={closeRfq} className="rounded border px-4 py-2 text-sm hover:bg-neutral-50">
                 Close RFQ (match against submitted quotes)
               </button>
